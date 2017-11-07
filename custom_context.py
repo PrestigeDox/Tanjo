@@ -10,6 +10,6 @@ class TanjoContext(commands.Context):
 
         await self.message.edit(embed=em, delete_after=delete_after)
         
-    async def reply(self):
+    async def reply(self, content: str):
         """ replies with mention """
-        await ctx.send(
+        await super().send(f'{content} {super().author.mention}')
