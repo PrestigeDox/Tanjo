@@ -9,3 +9,7 @@ class TanjoContext(commands.Context):
                            description=err.format())
 
         await self.message.edit(embed=em, delete_after=delete_after)
+        
+    async def reply(self):
+        """ replies with mention """
+        await ctx.send(
