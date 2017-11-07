@@ -1,1 +1,52 @@
 # Tanjo
+
+## To Do
+- **Mod:**
+	- ~~Ban~~
+	- ~~Kick~~
+	- Mute
+	- Warn
+	- ~~Purge~~	
+	- Clean (softban to purge all messages)
+- **Basic Games:**
+	- Coin Flip
+	- 8ball
+	- Choice
+	- Dice
+	- Currency System (same balance across all servers)
+	- Slots
+	- Black Jack (21)
+	- Fishing
+	- Tick Tac Toe
+- **Actual Games:**
+	- Fortnite
+	- Clash of Clans
+	- Clash Royale
+	- League of Legends
+- **Utility:**
+	- Enable / Disable certain games per guild/channel
+	- Whois
+	- Bot Info
+	- Define
+		- And UrbanDictionary
+	- Wikipedia
+	- Avatar
+	- Starboard
+	- Help
+	- IP to location
+	- Info
+	- Shorten url
+	- Highlighter
+	- Charinfo
+- **Internet:**
+	- YouTube	
+	- Weather
+	- Music
+	- Google
+	- Cat
+	- Dog
+	- NSFW
+	- Calculator
+- **Developer Only:**
+	- Eval
+	- Pyval
