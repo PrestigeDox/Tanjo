@@ -40,6 +40,7 @@ class Misc:
 
     @commands.command(aliases=['8ball', 'ask'])
     async def eight_ball(self, ctx, *, question):
+        """Ask me whatever you want! And I will answer it..."""
         if question.endswith('?'):
             await ctx.reply(f'\U0001f52e | {random.choice(self.ball_replies)}')
         else:
