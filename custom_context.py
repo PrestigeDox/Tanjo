@@ -12,4 +12,4 @@ class TanjoContext(commands.Context):
         
     async def reply(self, content: str):
         """ replies with mention """
-        await super().send(f'{content} {super().author.mention}')
+        await self.send(f'{content} {self.author.mention}')
