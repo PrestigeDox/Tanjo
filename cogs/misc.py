@@ -50,7 +50,42 @@ class Misc:
         emb = discord.Embed(colour=self.color)
         emb.add_field(name='Pong!', value=f'{pingtime:.1f}ms')
         await ctx.send(embed=emb)
+        
+    async def get_json(self, link: str):
+        async with bot.session.get(link) as r:
+            res = await r.json()
+        return res
 
+    @commands.group()
+    async def random(self, ctx):
+        return
+
+    @random.command()
+    async def cat(self, ctx):
+        """ Random Cat Picture """
+        image = (await self.get_json('http://random.cat/meow'))['file']
+        image_embed = discord.Embed(title="Cat Pic!", color=self.color)
+        image_embed.set_image(url=image)
+        await ctx.send(embed=image_embed)
+
+    @random.command()
+    async def dog(self, ctx):
+        """ Random Dog Picture """
+        image = (await self.get_json('http://random.dog/woof.json'))['url']
+        image_embed = discord.Embed(title="Dog Pic!", color=self.color)
+        image_embed.set_image(url=image)
+        await ctx.send(embed=image_embed)
+        
+    @random.command(aliases=["hackerman"])
+    async def hacker(self, ctx):
+        """ Random Hacker Quote """
+        quote = (await self.get_json('https://hacker.actor/quote'))['quote']
+        quote_embed = discord.Embed(title="Hackerman Quote",
+                                    description=quote,
+                                    color=self.color)
+        quote_embed.set_thumbnail(url="https://being-a-weeb.is-bad.com/a4d747.png")
+        await ctx.send(embed=quote_embed)
+
+        
 def setup(bot):
     bot.add_cog(Misc(bot))
-
