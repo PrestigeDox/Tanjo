@@ -7,7 +7,7 @@
 	- Mute
 	- Warn
 	- ~~Purge~~	
-	- Clean (softban to purge all messages)
+	- ~~Clean (softban to purge all messages)~~
 	- Channel lockdown
 - **Basic Games:**
 	- ~~Coin Flip~~
@@ -49,12 +49,12 @@
 	- YouTube	
 	- Weather
 	- Music
-	- Google
+	- ~~Google~~
 	- Cat
 	- Dog
 	- NSFW
 	- Dict group (dictionary.net, oxford english dictionaries, merrian webster, thesaurus, wiktionary, wordnet)
 	- Calculator
 - **Developer Only:**
-	- Eval
-	- Pyval
+	- ~~Eval~~
+	- ~~Pyval~~
