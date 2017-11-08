@@ -153,7 +153,7 @@ class Music:
             # Create Embed Response
             np_embed = discord.Embed(title=player.current_entry['title'],
                                      description='added by **%s**' % player.current_entry['author'].name,
-                                     url=player.current_entry['url'], colour=0xffffff)
+                                     url=player.current_entry['url'], colour=self.color)
             np_embed.add_field(name='Progress', value=prog_str)
             np_embed.set_image(url=player.current_entry['thumb'])
             np_embed.set_author(name='Now Playing', icon_url=player.current_entry['author'].avatar_url)
@@ -163,13 +163,13 @@ class Music:
             await ctx.message.channel.send("Nothing is playing!")
 
     @commands.command(aliases=['list', 'q'])
-    async def q(self, ctx, *, index: int=None):
+    async def queue(self, ctx, *, index: int=None):
         """ List the Current Queue """
         if index:
             index -= 1
 
         player = self.bot.players[ctx.message.guild]
-        printlines = {0: []}
+        printlines = {0: ['```py']}
         current_page = 0
         for i, item in enumerate(player.playlist, 1):
             nextline = '{}. {} added by {}\n'.format(i, item['title'], item['author'].name).strip()
@@ -197,13 +197,14 @@ class Music:
             return await ctx.error('Empty queue! Queue something with `play`')
 
         if len(printlines.keys()) == 1:
-            await ctx.send(''.join(printlines[0]))
+            await ctx.send('\n'.join(printlines[0]))
             return
 
         if index not in printlines.keys():
             return await ctx.error(f"The current queue only has pages 1-{len(printlines.keys())}")
 
-        q_msg = await ctx.send(''.join(printlines[index]))
+        printlines[index].insert(len(printlines[index]) - 2, f'\nPage: {index+1}/{len(printlines.keys())}')
+        q_msg = await ctx.send('\n'.join(printlines[index]))
         for emoji in self.reaction_emojis:
             await q_msg.add_reaction(emoji)
 
@@ -226,6 +227,22 @@ class Music:
             elif str(reaction.emoji) == self.reaction_emojis[1]:
                 index = min(len(printlines.keys())-1, index+1)
                 await q_msg.edit(''.join(printlines[index]))
+
+    @commands.command(aliases=['leave', 'destroy', 'dc'])
+    async def disconnect(self, ctx):
+        """ Make the Bot Leave Your Voice Channel """
+        try:
+            player = self.bot.players[ctx.message.guild]
+            player.death = 1
+            self.bot.players.pop(ctx.message.guild)
+        except KeyError:
+            return
+
+        await self.bot.vc_clients.pop(ctx.message.guild).disconnect()
+
+        em = discord.Embed(title="Disconnected", description="by " + ctx.message.author.mention, colour=self.color)
+        em.set_thumbnail(url="https://i.imgur.com/BkrB9E3.png")
+        await ctx.send(embed=em)
 
 
 def setup(bot):
