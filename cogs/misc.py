@@ -52,7 +52,7 @@ class Misc:
         await ctx.send(embed=emb)
         
     async def get_json(self, link: str):
-        async with bot.session.get(link) as r:
+        async with self.bot.session.get(link) as r:
             res = await r.json()
         return res
 
