@@ -19,17 +19,23 @@ class Tanjo(commands.Bot):
             self.config = json.load(f)
 
         # Startup extensions (none yet)
-        startup_ext = [x.stem for x in Path('cogs').glob('*.py')]
+        self.startup_ext = [x.stem for x in Path('cogs').glob('*.py')]
 
         # TODO:
         # - Dynamic prefixes (per guild)
         # - Migrate help command from Watashi
         super().__init__(command_prefix='t.', description=self.description, pm_help=None, *args, **kwargs)
 
+        # Make room for the help command
+        self.remove_command('help')
+
+        # Embed color
+        self.user_color = discord.Color.dark_orange()
+
     def run(self):
         super().run(self.config['token'])
 
-    # Utilise custom context for error messaging
+    # Utilise custom context for error messaging etc.
     async def on_message(self, message):
         ctx = await self.get_context(message, cls=TanjoContext)
         await self.invoke(ctx)
