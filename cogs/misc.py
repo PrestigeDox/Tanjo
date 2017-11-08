@@ -41,7 +41,6 @@ class Misc:
       emb = discord.Embed(colour=0x00ffff)
       emb.add_field(name='Pong!', value=pingtime)
       await ctx.send(embed=emb)
-            
 
 def setup(bot):
     bot.add_cog(Misc(bot))
