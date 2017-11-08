@@ -51,9 +51,9 @@ class Misc:
         emb.add_field(name='Pong!', value=f'{pingtime:.1f}ms')
         await ctx.send(embed=emb)
         
-    async def get_json(self, link: str):
+    async def get_json(self, link: str, content_type=True):
         async with bot.session.get(link) as r:
-            res = await r.json()
+            res = await r.json(content_type=content_type)
         return res
 
     @commands.group()
@@ -79,7 +79,7 @@ class Misc:
     @random.command(aliases=["hackerman"])
     async def hacker(self, ctx):
         """ Random Hacker Quote """
-        quote = (await self.get_json('https://hacker.actor/quote'))['quote']
+        quote = (await self.get_json('https://hacker.actor/quote'), content_type=None)['quote']
         quote_embed = discord.Embed(title="Hackerman Quote",
                                     description=quote,
                                     color=self.color)
