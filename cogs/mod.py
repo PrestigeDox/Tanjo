@@ -68,10 +68,15 @@ class Mod:
         else:
             await ctx.send("Could not find user to unban.")
 
-    @commands.command(aliases=['purge'])
+    @commands.group()
     @commands.has_permissions(manage_messages=True)
-    async def clean(self, ctx, num_msg: int):
+    async def clean(self, ctx):
         """ Remove bot messages from the last X messages """
+        pass
+
+    @clean.group(name='bot')
+    async def clean_bot(self, ctx, num_msg: int = 100):
+        """ Remove Tanjo messages from the last X messages (default 100) """
         if num_msg > 100:
             return await ctx.error('Number of messages to be deleted must not exceed 100.')
 
@@ -81,6 +86,33 @@ class Mod:
 
         try:
             await ctx.channel.purge(check=check, limit=num_msg)
+        except Exception as e:
+            await ctx.error(f'Failed to delete messages.\n ```py\n{e}```')
+
+    @clean.group(name='user')
+    async def clean_user(self, ctx, member: discord.Member, num_msg: int = 100):
+        """ Remove user messages from the last X messages (default 100)
+        Note: if the member conversion fails above, it will throw an exception """
+        if num_msg > 100:
+            return await ctx.error('Number of messages to be deleted must not exceed 100.')
+
+        # Makes sure to only delete the member's messages
+        def check(message):
+            return message.author.id == member.id
+
+        try:
+            await ctx.channel.purge(check=check, limit=num_msg)
+        except Exception as e:
+            await ctx.error(f'Failed to delete messages.\n ```py\n{e}```')
+
+    @commands.command()
+    async def purge(self, ctx, num_msg: int = 100):
+        """ Remove the last X messages in a channel (default 100) """
+        if num_msg > 100:
+            return await ctx.error('Number of messages to be deleted must not exceed 100.')
+
+        try:
+            await ctx.channel.purge(limit=num_msg)
         except Exception as e:
             await ctx.error(f'Failed to delete messages.\n ```py\n{e}```')
 

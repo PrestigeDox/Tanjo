@@ -13,6 +13,7 @@ class Music:
 
     def __init__(self, bot):
         self.bot = bot
+        self.color = bot.user_color
 
     @commands.command()
     async def play(self, ctx):
@@ -33,13 +34,13 @@ class Music:
 
         # Handle funky embed connecting
         if message.guild not in bot.vc_clients:
-            np_embed = discord.Embed(title='Connecting...', colour=0xffffff)
+            np_embed = discord.Embed(title='Connecting...', colour=self.color)
             np_embed.set_thumbnail(url='https://i.imgur.com/DQrQwZH.png')
             trying_msg = await message.channel.send(embed=np_embed)
 
             # Error if you're trying to listen music out of thin air/not in a voice channel
             if message.author.voice is None:
-                np_embed = discord.Embed(title='Error', description='You are not in a voice channel', colour=0xffffff)
+                np_embed = discord.Embed(title='Error', description='You are not in a voice channel', colour=self.color)
                 np_embed.set_thumbnail(url='https://imgur.com/B9YlwWt.png')
                 await trying_msg.edit(embed=np_embed)
                 return
@@ -49,13 +50,13 @@ class Music:
                 vc = await message.author.voice.channel.connect(timeout=6.0, reconnect=True)
             except asyncio.TimeoutError:
                 np_embed = discord.Embed(title='Error', description="Wasn't able to connect, please try again!",
-                                         colour=0xffffff)
+                                         colour=self.color)
                 np_embed.set_thumbnail(url='https://imgur.com/B9YlwWt.png')
                 await trying_msg.edit(embed=np_embed)
                 return
             bot.vc_clients[message.guild] = vc
             np_embed = discord.Embed(title='Bound to ' + message.author.voice.channel.name,
-                                     description='summoned by **%s**' % message.author.mention, colour=0xffffff)
+                                     description='summoned by **%s**' % message.author.mention, colour=self.color)
             np_embed.set_thumbnail(url='https://imgur.com/F95gtPV.png')
             await trying_msg.edit(embed=np_embed)
 

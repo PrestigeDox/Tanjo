@@ -35,6 +35,14 @@ class Misc:
                               else "http://researchmaniacs.com/Random/Images/Quarter-Heads.png")
         await ctx.send(embed=emb)
 
+    @commands.command(name='choose', aliases=['choice', 'decide'])
+    async def choices(self, ctx, *args):
+        """ Have Tanjo decide what you should do with your life """
+        if len(args) < 2:
+            return await ctx.error("Need at least two choices.")
+
+        await ctx.send(random.choice(args))
+
     @commands.command(aliases=['pingtime'])
     async def ping(self, ctx):
         pingtime = self.bot.latency * 1000
