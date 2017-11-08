@@ -37,10 +37,10 @@ class Misc:
 
     @commands.command(aliases=['pingtime'])
     async def ping(self, ctx):
-      pingtime = self.bot.latency * 1000
-      emb = discord.Embed(colour=0x00ffff)
-      emb.add_field(name='Pong!', value=pingtime)
-      await ctx.send(embed=emb)
+        pingtime = self.bot.latency * 1000
+        emb = discord.Embed(colour=self.color)
+        emb.add_field(name='Pong!', value=pingtime)
+        await ctx.send(embed=emb)
 
 def setup(bot):
     bot.add_cog(Misc(bot))
