@@ -44,7 +44,7 @@ class Misc:
         if question.endswith('?'):
             await ctx.reply(f'\U0001f52e | {random.choice(self.ball_replies)}')
         else:
-            await ctx.reply('That doesn't look like a question.')
+            await ctx.reply("That doesn't look like a question.")
             
 
 def setup(bot):
