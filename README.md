@@ -10,9 +10,9 @@
 	- Clean (softban to purge all messages)
 	- Channel lockdown
 - **Basic Games:**
-	- Coin Flip
+	- ~~Coin Flip~~
 	- iching
-	- 8ball
+	- ~~8ball~~
 	- Choice
 	- Dice
 	- Currency System (same balance across all servers)
