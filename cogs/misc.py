@@ -35,7 +35,7 @@ class Misc:
                               else "http://researchmaniacs.com/Random/Images/Quarter-Heads.png")
         await ctx.send(embed=emb)
 
-        @commands.command(aliases=['pingtime'])
+    @commands.command(aliases=['pingtime'])
     async def ping(self, ctx):
       pingtime = self.bot.latency * 1000
       emb = discord.Embed(colour=0x00ffff)
