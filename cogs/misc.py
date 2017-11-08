@@ -34,7 +34,13 @@ class Misc:
         emb.set_thumbnail(url="http://researchmaniacs.com/Random/Images/Quarter-Tails.png" if self.coins.index(result)
                               else "http://researchmaniacs.com/Random/Images/Quarter-Heads.png")
         await ctx.send(embed=emb)
-            
+
+    @commands.command(aliases=['pingtime'])
+    async def ping(self, ctx):
+      pingtime = self.bot.latency * 1000
+      emb = discord.Embed(colour=0x00ffff)
+      emb.add_field(name='Pong!', value=pingtime)
+      await ctx.send(embed=emb)
 
 def setup(bot):
     bot.add_cog(Misc(bot))
