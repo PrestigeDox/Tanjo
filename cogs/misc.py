@@ -16,24 +16,24 @@ class Misc:
                               "Outlook not so good", "Very doubtful", "Not as I see it", "No. Never", "Absolutely not",
                               "I doubt it"]
         self.coins = ["Heads", "Tails"]
+        self.color = bot.user_color
 
-    @commands.command(aliases=['8ball', 'ask'])
+    @commands.command(name='8ball', aliases=['ball', 'ask'])
     async def eight_ball(self, ctx, *, question):
         """Ask me whatever you want! And I will answer it..."""
         if not question.endswith('?'):
-            return await ctx.error("That doesn't look like a question.")
+            return await ctx.error("That doesn't look like a question to me.")
 
-        await ctx.reply(f'\U0001f52e | {random.choice(self.ball_replies)}')
+        await ctx.reply(f'\U0001f3b1 | {random.choice(self.ball_replies)}')
 
     @commands.command(name="flip", aliases=["coinflip"])
     async def coin_flip(self, ctx):
         """ Toss a coin """
-        result = random.randint(0, 1)
-
-        emb = discord.Embed(title='Coin Flip', description=self.coins[result], colour=self.color)
-        emb.set_thumbnail(url="http://researchmaniacs.com/Random/Images/Quarter-Tails.png" if result
+        result = random.choice(self.coins)
+        emb = discord.Embed(title=result, colour=self.color)
+        emb.set_thumbnail(url="http://researchmaniacs.com/Random/Images/Quarter-Tails.png" if self.coins.index(result)
                               else "http://researchmaniacs.com/Random/Images/Quarter-Heads.png")
-        await ctx.reply(embed=emb, content=None)
+        await ctx.send(embed=emb)
             
 
 def setup(bot):
