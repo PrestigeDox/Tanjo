@@ -36,18 +36,19 @@ class Misc:
         await ctx.send(embed=emb)
 
     @commands.command(name='choose', aliases=['choice', 'decide'])
-    async def choices(self, ctx, *args):
-        """ Have Tanjo decide what you should do with your life """
-        if len(args) < 2:
+    async def choices(self, ctx, *, choices):
+        """ Have Tanjo decide what you should do with your life (comma separated) """
+        choice_list = choices.split(',')
+        if len(choice_list) < 2:
             return await ctx.error("Need at least two choices.")
 
-        await ctx.send(random.choice(args))
+        await ctx.send(random.choice(choice_list))
 
     @commands.command(aliases=['pingtime'])
     async def ping(self, ctx):
         pingtime = self.bot.latency * 1000
         emb = discord.Embed(colour=self.color)
-        emb.add_field(name='Pong!', value=pingtime)
+        emb.add_field(name='Pong!', value=f'{pingtime:.1f}ms')
         await ctx.send(embed=emb)
 
 def setup(bot):
