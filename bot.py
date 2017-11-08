@@ -15,10 +15,11 @@ class Tanjo(commands.Bot):
         with open('data/config.json') as f:
             self.config = json.load(f)
 
+
         # TODO:
         # - Dynamic prefixes (per guild)
         # - Migrate help command from Watashi
-        super().__init__(command_prefix='t.', description=self.description, pm_help=None, *args, **kwargs)
+        super().__init__(command_prefix=commands.when_mentioned_or(None), description=self.description, pm_help=None, *args, **kwargs)
 
         # Startup extensions (none yet)
         self.startup_ext = [x.stem for x in Path('cogs').glob('*.py')]

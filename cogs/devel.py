@@ -1,4 +1,5 @@
 import asyncio
+import discord
 import traceback
 import textwrap
 import io
@@ -58,7 +59,7 @@ class Developer:
                 ret = await func()
         except Exception as e:
             value = stdout.getvalue()
-            await ctx.error(f'```py\n{value}{traceback.format_exc()}\n```', delete_after=15.0)
+            await ctx.error(f'```py\n{value}{traceback.format_exc()}\n```')
         else:
             value = stdout.getvalue()
 
@@ -86,7 +87,7 @@ class Developer:
                 await ctx.send(f'`{cmd}` produced no output')
 
         except Exception as e:
-            await ctx.error(f'Unable to send output\n```py\n{e}```', delete_after=15.0)
+            await ctx.error(f'Unable to send output\n```py\n{e}```')
 
 
 def setup(bot):

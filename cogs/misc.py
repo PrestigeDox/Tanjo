@@ -1,5 +1,6 @@
 #!/bin/env python3
 
+import ast
 import random
 import discord
 from discord.ext import commands
@@ -8,6 +9,7 @@ from discord.ext import commands
 class Misc:
     def __init__(self, bot):
         self.bot = bot
+        self.session = bot.session
         self.ball_replies = ["It is certain", "It is decidedly so", "Without a doubt", "Yes definitely",
                               "You may rely on it", "As I see it yes", "Most likely", "Outlook good", "Yes",
                               "Signs point to yes", "Reply hazy. Try again", "Ask again later",
@@ -50,40 +52,39 @@ class Misc:
         emb = discord.Embed(colour=self.color)
         emb.add_field(name='Pong!', value=f'{pingtime:.1f}ms')
         await ctx.send(embed=emb)
-        
-    async def get_json(self, link: str, content_type=True):
-        async with bot.session.get(link) as r:
-            res = await r.json(content_type=content_type)
-        return res
 
     @commands.group()
     async def random(self, ctx):
-        return
+        pass
 
     @random.command()
     async def cat(self, ctx):
         """ Random Cat Picture """
-        image = (await self.get_json('http://random.cat/meow'))['file']
+        async with self.session.get('http://random.cat/meow') as r:
+            image = (await r.json())['file']
         image_embed = discord.Embed(title="Cat Pic!", color=self.color)
         image_embed.set_image(url=image)
+
         await ctx.send(embed=image_embed)
 
     @random.command()
     async def dog(self, ctx):
         """ Random Dog Picture """
-        image = (await self.get_json('http://random.dog/woof.json'))['url']
+        async with self.session.get('http://random.dog/woof.json') as r:
+            image = (await r.json())['url']
         image_embed = discord.Embed(title="Dog Pic!", color=self.color)
         image_embed.set_image(url=image)
+
         await ctx.send(embed=image_embed)
         
     @random.command(aliases=["hackerman"])
     async def hacker(self, ctx):
         """ Random Hacker Quote """
-        quote = (await self.get_json('https://hacker.actor/quote'), content_type=None)['quote']
-        quote_embed = discord.Embed(title="Hackerman Quote",
-                                    description=quote,
-                                    color=self.color)
+        async with self.session.get('https://hacker.actor/quote') as r:
+            quote = ast.literal_eval(await r.text())['quote']
+        quote_embed = discord.Embed(title="Hackerman Quote", description=quote, color=self.color)
         quote_embed.set_thumbnail(url="https://being-a-weeb.is-bad.com/a4d747.png")
+
         await ctx.send(embed=quote_embed)
 
         
