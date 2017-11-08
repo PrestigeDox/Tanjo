@@ -11,7 +11,7 @@ from urllib.parse import parse_qs
 class Google:
     def __init__(self, bot):
         self.bot = bot
-        self.aiohttp_session = bot.aiohttp_session
+        self.session = bot.session
         self.url = 'https://google.com/search'
         self.headers = {
             'User-Agent': 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2; .NET CLR '
@@ -41,7 +41,7 @@ class Google:
         results_num = 3
 
         # Tries its best to imitate a real browser visit, an old user-agent is used to make scraping easier
-        async with self.aiohttp_session.get(self.url, params=params, headers=self.headers) as r:
+        async with self.session.get(self.url, params=params, headers=self.headers) as r:
             html = await r.text()
 
         # Beautiful soup
@@ -86,9 +86,9 @@ class Google:
         results = "\n\n".join([f'<{link}>\n{desc}' for link, desc in list(zip(result_links, result_desc))[:results_num]])
 
         if google_embed:
-            await ctx.reply(embed=em, content=f"\n**Results for {query}:**\n{results}")
+            await ctx.send(embed=em, content=f"\n**Results for {query}:**\n{results}")
         else:
-            await ctx.reply(content=f"\n**Results for {query}:**\n{results}")
+            await ctx.send(content=f"\n**Results for {query}:**\n{results}")
 
     @google.command()
     async def images(self, ctx, *, query: str=None):
@@ -101,7 +101,7 @@ class Google:
         # The modern image search page being JS rendered, data in these divs are jsons with raw image URLs
         # Old image search pages, only have thumbnails and a direct link to websites
         params = {'q': quote_plus(query), 'source': 'lmns', 'tbm': 'imsch'}
-        async with self.aiohttp_session.get(self.url, params=params, headers=self.image_headers) as r:
+        async with self.session.get(self.url, params=params, headers=self.image_headers) as r:
             html = await r.text()
 
         # Healthy
@@ -118,7 +118,7 @@ class Google:
         em = discord.Embed(title=f"Image results for {query}")
         em.add_field(name=f"[Link]({images[0]})")
         em.set_image(url=images[0])
-        image_result = await ctx.reply(embed=em)
+        image_result = await ctx.send(embed=em)
 
 
 def setup(bot):

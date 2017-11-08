@@ -7,6 +7,7 @@ class Help:
         self.bot = bot
         self.cmd = bot.get_command
         self.color = bot.user_color
+        self.pre = bot.command_prefix
 
     @commands.group(invoke_without_command=True)
     async def help(self, ctx, *, command_name: str=None):
@@ -52,7 +53,7 @@ class Help:
         em.add_field(name='Commands', value='\n'.join([f'\u2022 `{self.pre}{x.name}` - {x.short_doc}'
                                                        for x in self.bot.get_cog_commands(category_name)]))
 
-        await ctx.message.edit(embed=em)
+        await ctx.send(embed=em)
 
     @help.command(name='command', aliases=['cmd', 'commands'])
     async def help_command(self, ctx, *, cmd_name: str=None):
@@ -85,7 +86,7 @@ class Help:
                            f'{" ".join([f"<{x}>" for x in cmd_obj.clean_params])}```',
                      inline=False)
 
-        await ctx.message.edit(embed=em)
+        await ctx.send(embed=em)
 
 
 def setup(bot):
