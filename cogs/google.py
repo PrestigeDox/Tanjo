@@ -1,3 +1,4 @@
+import asyncio
 import discord
 import json
 
@@ -26,8 +27,9 @@ class Google:
             'Accept-Language': 'en-us',
             'Cache-Control': 'no-cache'
             }
+        self.reaction_emojis = ['1⃣', '2⃣', '3⃣', '4⃣']
 
-    @commands.group(aliases=['g'])
+    @commands.group(invoke_without_command=True, aliases=['g'])
     async def google(self, ctx, *, query: str=None):
         """ Search Google for a query """
         # Handle no query being provided
@@ -90,7 +92,7 @@ class Google:
         else:
             await ctx.send(content=f"\n**Results for {query}:**\n{results}")
 
-    @google.command()
+    @google.command(name="images", aliases=['img', 'image'])
     async def images(self, ctx, *, query: str=None):
         """ Search Google for Images """
         # Handle empty query
@@ -100,7 +102,7 @@ class Google:
         # Using these specific headers and "lnms" as source, will provide divs with "rg_meta" classes,
         # The modern image search page being JS rendered, data in these divs are jsons with raw image URLs
         # Old image search pages, only have thumbnails and a direct link to websites
-        params = {'q': quote_plus(query), 'source': 'lmns', 'tbm': 'imsch'}
+        params = {'q': quote_plus(query), 'source': 'lmns', 'tbm': 'isch'}
         async with self.session.get(self.url, params=params, headers=self.image_headers) as r:
             html = await r.text()
 
@@ -112,14 +114,42 @@ class Google:
         for item in soup.select('div.rg_meta')[:4]:
             images.append(json.loads(item.text)["ou"])
 
-        # TODO
-        # Make interactive embed with 4 image results
-
-        em = discord.Embed(title=f"Image results for {query}")
-        em.add_field(name=f"[Link]({images[0]})")
+        # Setup a base embed
+        em = discord.Embed(title="Link", url=images[0])
+        em.set_author(name=f"Image results for {query}")
         em.set_image(url=images[0])
 
+        # Save the sent image as image_result for further manipulation
         image_result = await ctx.send(embed=em)
+
+        # reaction_emojis has 1,2,3,4 in a sequence, so 1,2,3,4 reactions get added
+        for emoji in self.reaction_emojis:
+            await image_result.add_reaction(emoji)
+
+        while 1:
+            # Make sure the reaction is where we wanted it to be
+            def check(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in self.reaction_emojis\
+                       and reaction.message == ctx.message
+
+            # If someone doesn't react for 30 secs, just die :<
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            except asyncio.TimeoutError:
+                await image_result.delete()
+                break
+
+            # Remove the user's reactions for a 'button' like experience
+            for emoji in self.reaction_emojis:
+                await image_result.remove_reaction(emoji, ctx.author)
+
+            # Now, if they reacted with say '2', the index of '2' in reaction_emojis will be 1
+            # This corresponds to the item in our images list, so we grab the index and without any hassle
+            # update the embed with a new image and link
+            selected_item = self.reaction_emojis.index(str(reaction.emoji))
+            em.set_image(url=images[selected_item])
+            em.url = images[selected_item]
+            await image_result.edit(embed=em)
 
 
 def setup(bot):
