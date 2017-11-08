@@ -13,7 +13,7 @@
 	- ~~Coin Flip~~
 	- iching
 	- ~~8ball~~
-	- Choice
+	- ~~Choice~~
 	- Dice
 	- Currency System (same balance across all servers)
 	- Slots
