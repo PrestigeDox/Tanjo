@@ -119,7 +119,7 @@ class Google:
         em.add_field(name=f"[Link]({images[0]})")
         em.set_image(url=images[0])
         image_result = await ctx.reply(embed=em)
-
+        await image_result.add
 
 def setup(bot):
     bot.add_cog(Google(bot))
