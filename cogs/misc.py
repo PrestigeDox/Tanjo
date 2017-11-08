@@ -37,6 +37,7 @@ class Misc:
                               "Absolutely not",
                               "I doubt it"
                             ]
+        self.coins = ["Heads", "Tails"]
 
     @commands.command(aliases=['8ball', 'ask'])
     async def eight_ball(self, ctx, *, question):
@@ -45,8 +46,18 @@ class Misc:
             await ctx.reply(f'\U0001f52e | {random.choice(self.ball_replies)}')
         else:
             await ctx.reply("That doesn't look like a question.")
+
+    @commands.command(name="flip", aliases=["coinflip"])
+    async def coin_flip(self, ctx):
+        """ Toss a coin """
+        result = random.randint(0, 1)
+
+        emb = discord.Embed(title='Coin Flip', description=self.coins[result], colour=self.color)
+        emb.set_thumbnail(url="http://researchmaniacs.com/Random/Images/Quarter-Tails.png" if result else "http"
+                                                                                                          "://researchmaniacs.com/Random/Images/Quarter-Heads.png")
+        await ctx.reply(embed=emb, content=None)
             
 
 def setup(bot):
     bot.add_cog(Misc(bot))
-            
+
