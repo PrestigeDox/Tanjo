@@ -48,6 +48,7 @@ class Misc:
 
     @commands.command(aliases=['pingtime'])
     async def ping(self, ctx):
+        """ Pong!  """
         pingtime = self.bot.latency * 1000
         emb = discord.Embed(colour=self.color)
         emb.add_field(name='Pong!', value=f'{pingtime:.1f}ms')
@@ -87,6 +88,23 @@ class Misc:
 
         await ctx.send(embed=quote_embed)
 
+    @commands.command(name='dice', aliases=['rolldice'])
+    async def _dice(self, ctx, number: int = 1):
+      if number == 1:
+        emb = discord.Embed(colour=self.bot.user_color)
+        emb.add_field(name = 'Score', value=f'Your Rolled: {random.randint(1,6)}')
+        await ctx.send(embed=emb)
+      else:
+        rolled_scores = []
+        total_score = 0
+        for x in range(number):
+          random_roll = random.randint(1,6)
+          rolled_scores.append(str(random_roll))
+          total_score = total_score + random_roll
+        emb = discord.Embed(colour = self.bot.user_color)
+        emb.add_field(name='Rolled', value=f"{', '.join(rolled_scores)}")
+        emb.add_field(name='Total Score', value=f'{total_scores}')
+        await ctx.send(embed=emb)
         
 def setup(bot):
     bot.add_cog(Misc(bot))
