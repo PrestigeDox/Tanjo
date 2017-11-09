@@ -81,8 +81,10 @@ class Misc:
     async def hacker(self, ctx):
         """ Random Hacker Quote """
         async with self.session.get('https://hacker.actor/quote') as r:
+            # The site doesn't have a proper json header so I just eval it to a dict ¯\_(ツ)_/¯
             quote = ast.literal_eval(await r.text())['quote']
-        quote_embed = discord.Embed(title="Hackerman Quote", description=quote, color=self.color)
+        quote_embed = discord.Embed(color=self.color)
+        quote_embed.add_field(name='Tanjo says', value=quote)
         quote_embed.set_thumbnail(url="https://being-a-weeb.is-bad.com/a4d747.png")
 
         await ctx.send(embed=quote_embed)
