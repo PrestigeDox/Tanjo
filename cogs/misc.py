@@ -102,8 +102,8 @@ class Misc:
           rolled_scores.append(str(random_roll))
           total_score = total_score + random_roll
         emb = discord.Embed(colour = self.bot.user_color)
-        emb.add_field(name='Rolled', value=f"{', '.join(rolled_scores)}")
-        emb.add_field(name='Total Score', value=f'{total_scores}')
+        emb.add_field(name='Rolled', value=f"{', '.join(rolled_scores)}", inline=False)
+        emb.add_field(name='Total Score', value=f'{total_score}', inline=False)
         await ctx.send(embed=emb)
         
 def setup(bot):
