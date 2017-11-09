@@ -11,9 +11,13 @@
 	- Channel lockdown
 - **Basic Games:**
 	- ~~Coin Flip~~
-	- iching
+	- ~~iching~~ (game)
 	- ~~8ball~~
 	- ~~Choice~~
+	- ~~hexa~~ (game)
+	- ~~guess~~ (game)
+	- ~~seven~~ (game)
+	- ~~settle~~ (game)
 	- Dice
 	- Currency System (same balance across all servers)
 	- Slots
@@ -34,7 +38,7 @@
 	- Define
 		- And UrbanDictionary
 	- Wikipedia
-	- Avatar
+	- ~~avatar~~ (image and full size download link)
 	- Starboard
 	- Tags
 	- Custom Commands
@@ -45,16 +49,24 @@
 	- Url tester (scrap basic info about any url)
 	- Highlighter
 	- Charinfo
+- **Miscelaneous:**
+	- ~~zalgo~~ (text distortion)
+	- ~~esrever~~ (write backwards)
+	- ~~yt~~ (first video result)
+	- ~~share~~ (message as the bot in any channel)
+	- ~~tinyurl~~ (because)
+	- ~~ud~~ (pocket urban dictionary, gets only first result)
+	- ~~feedback~~ (to contact devs channel)
 - **Internet:**
 	- YouTube	
 	- Weather
-	- Music
+	- ~~Music~~ (seems to work for the most part)
 	- ~~Google~~
 	- Cat
 	- Dog
-	- NSFW
+	- ~~NSFW~~ (6 different commands)
 	- Dict group (dictionary.net, oxford english dictionaries, merrian webster, thesaurus, wiktionary, wordnet)
-	- Calculator
+	- ~~calculator~~ (python calculator, no more google)
 - **Developer Only:**
 	- ~~Eval~~
 	- ~~Pyval~~
