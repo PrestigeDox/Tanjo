@@ -5,7 +5,7 @@ import aiohttp
 import discord
 from discord.ext import commands
 from utils.custom_context import TanjoContext
-
+from utils.downloader import Downloader
 
 class Tanjo(commands.Bot):
     def __init__(self, *args, **kwargs):
@@ -20,6 +20,7 @@ class Tanjo(commands.Bot):
         # - Migrate help command from Watashi
         super().__init__(command_prefix='t.', description=self.description, pm_help=None, *args, **kwargs)
 
+        self.downloader = Downloader(download_folder='dload')
         # Startup extensions (none yet)
         self.startup_ext = [x.stem for x in Path('cogs').glob('*.py')]
 
@@ -32,6 +33,10 @@ class Tanjo(commands.Bot):
         # Embed color
         # Keeping with user_color convention to make migration from Watashi easier
         self.user_color = discord.Color.dark_orange()
+        self.vc_clients = {}
+        self.players = {}
+        # Now playing messages
+        self.np_msgs = {}
 
     def run(self):
         super().run(self.config['token'])
