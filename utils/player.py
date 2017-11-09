@@ -329,7 +329,7 @@ class Player:
             return
 
         with await self.download_lock:
-            async with self.bot.aioses.get(self.current_entry['url']) as resp:
+            async with self.bot.session.get(self.current_entry['url']) as resp:
                 response = await resp.text()
             soup = bs4.BeautifulSoup(response, "lxml")
             autoplayitems = [a for a in
