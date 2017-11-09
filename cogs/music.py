@@ -133,7 +133,7 @@ class Music:
 
     @commands.command(aliases=['nowplaying', 'player'])
     async def np(self, ctx):
-        """ Display Currently Playing Entry and Progress """
+        """ Display currently playing track and progress """
         filled = "▰"
         unfilled = "▱"
         player = self.bot.players[ctx.message.guild]
@@ -168,7 +168,7 @@ class Music:
 
     @commands.command(aliases=['list', 'q'])
     async def queue(self, ctx, *, index: int=None):
-        """ List the Current Queue """
+        """ List the current queue """
         if index:
             index -= 1
 
@@ -234,7 +234,7 @@ class Music:
 
     @commands.command(aliases=['leave', 'destroy', 'dc'])
     async def disconnect(self, ctx):
-        """ Make the Bot Leave Your Voice Channel """
+        """ Make the bot leave your voice channel """
         try:
             player = self.bot.players[ctx.message.guild]
             player.death = 1
@@ -250,7 +250,7 @@ class Music:
 
     @commands.command(aliases=['equalizer'])
     async def eq(self, ctx, *, eq: str=None):
-        """ Choose from a multitude of Equalizer Effects to Enhance Your Music """
+        """ Choose from a multitude of equalizer effects to enhance your music """
         player = self.bot.players[ctx.message.guild]
         eq = 'normal' if eq.lower() == 'reset' else eq
 
@@ -271,7 +271,7 @@ class Music:
 
     @commands.command(aliases=['auto'])
     async def autoplay(self, ctx):
-        """ Enable the Autoplay feature to queue songs based on your queue """
+        """ Enable the autoplay feature to queue songs based on your queue """
         player = self.bot.players[ctx.message.guild]
         if player.autoplay:
             player.autoplay = False
@@ -282,7 +282,7 @@ class Music:
 
     @commands.command(aliases=['pick'])
     async def jump(self, ctx, *, pickno: int=None):
-        """ Jump to Any Index in the Queue """
+        """ Jump to any index in the queue """
         player = self.bot.players[ctx.message.guild]
 
         if pickno is None:
@@ -302,7 +302,7 @@ class Music:
 
     @commands.command(aliases=['remove', 'rm'])
     async def rmsong(self, ctx, *, index: int=None):
-        """ Remove a Song from the Queue """
+        """ Remove a song from the queue """
         player = self.bot.players[ctx.message.guild]
         if index is None:
             return await ctx.error(f"Please provide a valid index number between 1 and {len(player.playlist.entries)}")
@@ -312,14 +312,14 @@ class Music:
 
     @commands.command()
     async def pause(self, ctx):
-        """ Pause the Player If It's Playing """
+        """ Pause the player if it's playing """
         player = self.bot.players[ctx.message.guild]
         if player.state == 'playing':
             await player.pause()
 
     @commands.command()
     async def resume(self, ctx):
-        """ Resume the Player If It's Paused """
+        """ Resume the player if it's paused """
         player = self.bot.players[ctx.message.guild]
         if player.state == 'paused':
             await player.resume()
