@@ -1,7 +1,9 @@
 #!/bin/env python3
 
 import asyncio
+import datetime
 import discord
+import time
 
 from datetime import timedelta
 from discord.ext import commands
@@ -16,6 +18,8 @@ class Music:
         self.bot = bot
         self.reaction_emojis = ['⬅', '➡']
         self.color = bot.user_color
+        self.effects = {'pop': 'Pop', 'classic': 'Classic', 'jazz': 'Jazz', 'rock': 'Rock', 'bb': 'Bass Boost',
+                        'normal': 'Normal', 'vocals': 'Vocals'}
 
     @commands.command()
     async def play(self, ctx):
@@ -38,7 +42,7 @@ class Music:
         # Handle funky embed connecting
         if message.guild not in bot.vc_clients:
             np_embed = discord.Embed(title='Connecting...', colour=self.color)
-            np_embed.set_thumbnail(url='https://i.imgur.com/DQrQwZH.png')
+            np_embed.set_thumbnail(url='https://imgur.com/3QIBGl3.png')
             trying_msg = await message.channel.send(embed=np_embed)
 
             # Error if you're trying to listen music out of thin air/not in a voice channel
@@ -54,13 +58,13 @@ class Music:
             except asyncio.TimeoutError:
                 np_embed = discord.Embed(title='Error', description="Wasn't able to connect, please try again!",
                                          colour=self.color)
-                np_embed.set_thumbnail(url='https://imgur.com/B9YlwWt.png')
+                np_embed.set_thumbnail(url='https://imgur.com/KQp2PUQ.png')
                 await trying_msg.edit(embed=np_embed)
                 return
             bot.vc_clients[message.guild] = vc
             np_embed = discord.Embed(title='Bound to ' + message.author.voice.channel.name,
                                      description='summoned by **%s**' % message.author.mention, colour=self.color)
-            np_embed.set_thumbnail(url='https://imgur.com/F95gtPV.png')
+            np_embed.set_thumbnail(url='https://imgur.com/kVlJSXg.png')
             await trying_msg.edit(embed=np_embed)
 
         # Smart way to go through the message and find out what's a flag and where our song name starts from
@@ -129,7 +133,7 @@ class Music:
 
     @commands.command(aliases=['nowplaying', 'player'])
     async def np(self, ctx):
-        """ Display Currently Playing Entry and Progress """
+        """ Display currently playing track and progress """
         filled = "▰"
         unfilled = "▱"
         player = self.bot.players[ctx.message.guild]
@@ -164,7 +168,7 @@ class Music:
 
     @commands.command(aliases=['list', 'q'])
     async def queue(self, ctx, *, index: int=None):
-        """ List the Current Queue """
+        """ List the current queue """
         if index:
             index -= 1
 
@@ -230,7 +234,7 @@ class Music:
 
     @commands.command(aliases=['leave', 'destroy', 'dc'])
     async def disconnect(self, ctx):
-        """ Make the Bot Leave Your Voice Channel """
+        """ Make the bot leave your voice channel """
         try:
             player = self.bot.players[ctx.message.guild]
             player.death = 1
@@ -241,8 +245,175 @@ class Music:
         await self.bot.vc_clients.pop(ctx.message.guild).disconnect()
 
         em = discord.Embed(title="Disconnected", description="by " + ctx.message.author.mention, colour=self.color)
-        em.set_thumbnail(url="https://i.imgur.com/BkrB9E3.png")
+        em.set_thumbnail(url="https://imgur.com/4me8pGr.png")
         await ctx.send(embed=em)
+
+    @commands.command(aliases=['equalizer'])
+    async def eq(self, ctx, *, eq: str=None):
+        """ Choose from a multitude of equalizer effects to enhance your music """
+        player = self.bot.players[ctx.message.guild]
+        eq = 'normal' if eq.lower() == 'reset' else eq
+
+        if not eq.lower() in self.effects.keys():
+            return await ctx.error(f"{eq}, is not a valid EQ effect.")
+
+        player.EQ = eq.lower()
+        if player.voice_client.is_playing():
+            player.justvoledit = 1
+            player.voice_client.stop()
+            seektm = datetime.datetime.fromtimestamp(player.accu_progress) - datetime.timedelta(hours=5, minutes=30)
+            self.bot.loop.create_task(player.play(str(seektm.strftime('%H:%M:%S.%f')), player.accu_progress))
+            print(str(time.strftime('%H:%M:%S', time.gmtime(player.accu_progress))))
+        em = discord.Embed(title="Equalizer",
+                           description=f":loud_sound: Equalizer has been set to {self.effects[eq.lower()]}.",
+                           color=self.color)
+        await ctx.send(embed=em)
+
+    @commands.command(aliases=['auto'])
+    async def autoplay(self, ctx):
+        """ Enable the autoplay feature to queue songs based on your queue """
+        player = self.bot.players[ctx.message.guild]
+        if player.autoplay:
+            player.autoplay = False
+            await ctx.send("**:musical_score: Autoplay:** Stopped")
+        else:
+            player.autoplay = True
+            await ctx.send("**:musical_score: Autoplay:** Started")
+
+    @commands.command(aliases=['pick'])
+    async def jump(self, ctx, *, pickno: int=None):
+        """ Jump to any index in the queue """
+        player = self.bot.players[ctx.message.guild]
+
+        if pickno is None:
+            return await ctx.error("Invalid Input!")
+
+        if pickno - 1 < 0 or pickno > len(player.playlist.entries):
+            return await ctx.error(f"Value can only be between 1 and {len(player.playlist.entries)}")
+            return
+
+        player.index = pickno - 1
+        if not player.voice_client.is_playing() and not player.state == "paused":
+            self.bot.loop.create_task(player.prepare_entry())
+            await ctx.send(f"Jumping to **{pickno}**!")
+        else:
+            player.justjumped = 1
+            await ctx.send(f"Will jump to **{pickno}** after the current track finishes playing!")
+
+    @commands.command(aliases=['remove', 'rm'])
+    async def rmsong(self, ctx, *, index: int=None):
+        """ Remove a song from the queue """
+        player = self.bot.players[ctx.message.guild]
+        if index is None:
+            return await ctx.error(f"Please provide a valid index number between 1 and {len(player.playlist.entries)}")
+        track = player.playlist.get_track(index)
+        player.playlist.remove(index)
+        await ctx.send(f"**{track['title']}** was removed from your playlist!")
+
+    @commands.command()
+    async def pause(self, ctx):
+        """ Pause the player if it's playing """
+        player = self.bot.players[ctx.message.guild]
+        if player.state == 'playing':
+            await player.pause()
+
+    @commands.command()
+    async def resume(self, ctx):
+        """ Resume the player if it's paused """
+        player = self.bot.players[ctx.message.guild]
+        if player.state == 'paused':
+            await player.resume()
+
+    @commands.command()
+    async def seek(self, ctx, *, seektime: str=None):
+        """ Seek to a certain point in a track """
+        if seektime is None:
+            return await ctx.error("Please provide time to seek to in the format, `hh:mm:ss``!")
+
+        player = self.bot.players[ctx.message.guild]
+        duration = player.current_entry['duration']
+        timelist = seektime.split()[1].split(':')
+
+        if not len(timelist) == 3:
+            return await ctx.error("Please provide time to seek to in the format, `hh:mm:ss``!")
+
+        seek_seconds = int(timelist[0])*60*60 + int(timelist[1])*60 + int(timelist[2])
+        if int(seek_seconds) > duration:
+            return await ctx.error(f"Value can only be between 00:00:00 and {str(timedelta(seconds=duration))}")
+
+        player.state = "seeking"
+        player.justseeked = 1
+        player.voice_client.stop()
+        self.bot.loop.create_task(player.play(ctx.message.content.split(' ')[1],int(seek_seconds)))
+        await ctx.send("Seeking to %s" % ctx.message.content.split(' ')[1])
+    
+    @commands.command()
+    async def skip(self, ctx):
+        """ Add votes to skip a track """
+        player = self.bot.players[ctx.message.guild]
+        if not player.voice_client.is_playing():
+            return await ctx.error("Nothing is playing to skip!")
+        else:
+            if player.current_entry['author'] == ctx.message.author:
+                await ctx.send(f"**{player.current_entry['title']}**"
+                               f"was skipped by it's author, {player.current_entry['author']}!"
+                               )
+                player.voice_client.stop()
+            else:
+                if ctx.message.author not in player.skip_votes:
+                    num_voice = sum(1 for m in ctx.message.author.voice.channel.members if not (
+                        m.voice.deaf or m.voice.self_deaf or m.id == self.bot.user.id))
+                    player.skip_votes.append(ctx.message.author)
+                    current_votes = len(player.skip_votes)
+                    required_votes = round(num_voice * (2 / 3))
+                    await ctx.send(
+                        f"Your vote was added!\n**{current_votes}/{required_votes}**" 
+                        "skip votes recieved, song will be skipped upon meeting requirements")
+                    if current_votes >= required_votes:
+                        await ctx.send(
+                            f"**{player.current_entry['title']}** was skipped upon meeting skip vote requirements!")
+                        player.voice_client.stop()
+                    else:
+                        await ctx.send(
+                            f"You have already voted to skip **{player.current_entry['title']}**,"
+                            "wait till more votes arrive!"
+                            )
+
+    @commands.command()
+    async def volume(self, ctx, *, volume: float=None):
+        """ Set the player's volume between 0.0 and 2.0 """
+        if volume is None:
+            return await ctx.error("Please provide volume between 0.0 and 2.0")
+
+        player = self.bot.players[ctx.message.guild]
+        if 0 <= volume <= 2.0:
+            player.volume = volume
+            em = discord.Embed(title="Volume changed!", description=f":loud_sound: New volume is {volume}")
+            await ctx.send(embed=em)
+            if player.voice_client.is_playing():
+                player.justvoledit = 1
+                player.voice_client.stop()
+                seektm = datetime.datetime.fromtimestamp(player.accu_progress) - datetime.timedelta(hours=5,minutes=30)
+                self.bot.loop.create_task(player.play(str(seektm.strftime('%H:%M:%S.%f')), player.accu_progress))
+        else:
+            return await ctx.error("Volume value can only range from 0.0-2.0")
+
+    @commands.command()
+    async def repeat(self, ctx):
+        """ Put a track from the queue on repeat """
+        player = self.bot.players[ctx.message.guild]
+        if not player.voice_client.is_playing():
+            await ctx.send("Nothing is playing to repeat!")
+        else:
+            if player.repeat:
+                player.repeat = 0
+                await ctx.send(f":negative_squared_cross_mark: **{player.current_entry['title']}**,"
+                               "has been taken off repeat.")
+            else:
+                player.repeat = 1
+                await ctx.send(f":arrows_counterclockwise: **{player.current_entry['title']}**, has been set to repeat,"
+                               "till the end of time itself!\nUse this command again to interrupt the repetition."
+                               )
 
 
 def setup(bot):
