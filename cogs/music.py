@@ -42,7 +42,7 @@ class Music:
         # Handle funky embed connecting
         if message.guild not in bot.vc_clients:
             np_embed = discord.Embed(title='Connecting...', colour=self.color)
-            np_embed.set_thumbnail(url='https://i.imgur.com/DQrQwZH.png')
+            np_embed.set_thumbnail(url='https://imgur.com/3QIBGl3.png')
             trying_msg = await message.channel.send(embed=np_embed)
 
             # Error if you're trying to listen music out of thin air/not in a voice channel
@@ -58,13 +58,13 @@ class Music:
             except asyncio.TimeoutError:
                 np_embed = discord.Embed(title='Error', description="Wasn't able to connect, please try again!",
                                          colour=self.color)
-                np_embed.set_thumbnail(url='https://imgur.com/B9YlwWt.png')
+                np_embed.set_thumbnail(url='https://imgur.com/KQp2PUQ.png')
                 await trying_msg.edit(embed=np_embed)
                 return
             bot.vc_clients[message.guild] = vc
             np_embed = discord.Embed(title='Bound to ' + message.author.voice.channel.name,
                                      description='summoned by **%s**' % message.author.mention, colour=self.color)
-            np_embed.set_thumbnail(url='https://imgur.com/F95gtPV.png')
+            np_embed.set_thumbnail(url='https://imgur.com/kVlJSXg.png')
             await trying_msg.edit(embed=np_embed)
 
         # Smart way to go through the message and find out what's a flag and where our song name starts from
@@ -245,7 +245,7 @@ class Music:
         await self.bot.vc_clients.pop(ctx.message.guild).disconnect()
 
         em = discord.Embed(title="Disconnected", description="by " + ctx.message.author.mention, colour=self.color)
-        em.set_thumbnail(url="https://i.imgur.com/BkrB9E3.png")
+        em.set_thumbnail(url="https://imgur.com/4me8pGr.png")
         await ctx.send(embed=em)
 
     @commands.command(aliases=['equalizer'])
