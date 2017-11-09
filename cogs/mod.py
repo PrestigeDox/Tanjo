@@ -29,6 +29,7 @@ class BannedMember(commands.Converter):
 class Mod:
     def __init__(self, bot):
         self.bot = bot
+        self.color = bot.user_color
 
     @commands.command(aliases=['k'])
     @commands.has_permissions(kick_members=True)
@@ -38,8 +39,32 @@ class Mod:
             await ctx.guild.kick(member, reason=reason)
         except:
             await ctx.error('Unable to kick member.')
-        else:
-            await ctx.send(f'Member `{member}` kicked.\nReason: `{reason}`.')
+
+        em = discord.Embed(title=f'Kicked: {member}', color=self.color, description=f'Reason: {reason}')
+        await ctx.send(embed=em)
+
+    @commands.command()
+    @commands.has_permissions(ban_members=True)
+    async def mute(self, ctx, member: discord.Member, expire_after = 10*60):
+        """ Temporarily mute a member """
+        # Get the muted role
+        tanjo_muted_role = discord.utils.get(ctx.guild.roles, name='Tanjo-Muted')
+
+        # Create role
+        if tanjo_muted_role is None:
+            tanjo_muted_role = await ctx.guild.create_role(name='Tanjo-Muted')
+
+            # Ensure they aren't allowed to speak server-wide
+            for channel in ctx.guild.channels:
+                await channel.set_permissions(tanjo_muted_role, send_messages=False)
+
+        # Actually mute the user
+        await member.add_roles(tanjo_muted_role, reason=reason)
+
+        # Create embed
+        em = discord.Embed(title=f'Muted: {member}', color=self.color)
+        em.description = f'Reason: {reason}'
+        await ctx.send(embed=em)
 
     @commands.command(aliases=['kb'])
     @commands.has_permissions(ban_members=True)
@@ -49,24 +74,25 @@ class Mod:
             await ctx.guild.ban(member, reason=reason, delete_message_days=0)
         except:
             await ctx.error('Unable to ban member.')
-        else:
-            await ctx.send(f'Member `{member}` banned.\nReason: `{reason}`.')
+
+        em = discord.Embed(title=f'Banned: {member}', color=self.color, description=f'Reason: {reason}')
+        await ctx.send(embed=em)
 
     @commands.command(aliases=['ub'])
     @commands.has_permissions(ban_members=True)
     async def unban(self, ctx, member: BannedMember, *, reason=None):
         """ Unban a member from the server
         Since you can't highlight them anymore use their name#discrim or ID """
-        if member is not None:
-            try:
-                await ctx.guild.unban(member.user, reason=reason)
-            except:
-                await ctx.error('Could not unban member.')
-            else:
-                await ctx.send(f'Member `{member.user}` unbanned.\nReason: `{reason}`.')
+        if member is None:
+            return await ctx.error("Could not find user to unban.")
 
-        else:
-            await ctx.send("Could not find user to unban.")
+        try:
+            await ctx.guild.unban(member.user, reason=reason)
+        except:
+            await ctx.error('Could not unban member.')
+
+        em = discord.Embed(title=f'Banned: {member}', color=self.color, description=f'Reason: {reason}')
+        await ctx.send(embed=em)
 
     @commands.group()
     @commands.has_permissions(manage_messages=True)

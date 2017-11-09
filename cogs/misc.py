@@ -90,23 +90,24 @@ class Misc:
 
         await ctx.send(embed=quote_embed)
 
-    @commands.command(name='dice', aliases=['rolldice'])
-    async def _dice(self, ctx, number: int = 1):
-      if number == 1:
-        emb = discord.Embed(colour=self.bot.user_color)
-        emb.add_field(name = 'Score', value=f'Your Rolled: {random.randint(1,6)}')
+    @commands.command(aliases=['roll', 'rolldice', 'diceroll'])
+    async def dice(self, ctx, amount: int = 1):
+        """ Roll X 6-sided dice (default 1) """
+        if amount < 1:
+            return await ctx.error('You actually have to roll a die...')
+        if amount > 20:
+            return await ctx.error("I don't have that many dice!")
+
+        emb = discord.Embed(title=':game_die: Dice roll', colour=self.color)
+        scores = [random.randint(1, 6) for _ in range(amount)]
+        if len(scores) == 1:
+            emb.add_field(name='Score', value=f'You rolled: {"".join(str(scores[0]))}.')
+            return await ctx.send(embed=emb)
+
+        emb.add_field(name='Rolled', value=f"{', '.join((str(x) for x in scores))}", inline=False)
+        emb.add_field(name='Total Score', value=f'{sum(scores)}', inline=False)
         await ctx.send(embed=emb)
-      else:
-        rolled_scores = []
-        total_score = 0
-        for x in range(number):
-          random_roll = random.randint(1,6)
-          rolled_scores.append(str(random_roll))
-          total_score = total_score + random_roll
-        emb = discord.Embed(colour = self.bot.user_color)
-        emb.add_field(name='Rolled', value=f"{', '.join(rolled_scores)}", inline=False)
-        emb.add_field(name='Total Score', value=f'{total_score}', inline=False)
-        await ctx.send(embed=emb)
-        
+
+
 def setup(bot):
     bot.add_cog(Misc(bot))
