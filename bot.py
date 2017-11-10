@@ -25,7 +25,7 @@ class Tanjo(commands.Bot):
         self.downloader = Downloader(download_folder='dload')
         # Startup extensions (none yet)
         self.startup_ext = [x.stem for x in Path('cogs').glob('*.py')]
-        self.bot.starttime = datetime.datetime.now()
+        self.starttime = datetime.datetime.now()
 
         # aiohttp session
         self.session = aiohttp.ClientSession(loop=self.loop)
