@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 from utils.custom_context import TanjoContext
 from utils.downloader import Downloader
+import datetime
 
 class Tanjo(commands.Bot):
     def __init__(self, *args, **kwargs):
@@ -24,6 +25,7 @@ class Tanjo(commands.Bot):
         self.downloader = Downloader(download_folder='dload')
         # Startup extensions (none yet)
         self.startup_ext = [x.stem for x in Path('cogs').glob('*.py')]
+        self.bot.starttime = datetime.datetime.now()
 
         # aiohttp session
         self.session = aiohttp.ClientSession(loop=self.loop)
