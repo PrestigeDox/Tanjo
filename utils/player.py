@@ -223,7 +223,7 @@ class Player:
                         self.start_time = time.time()
                         self.o_st = self.start_time
                     else:
-                        self.start_time = self.o_st - (seeksec - self.progress)
+                        self.start_time = time.time() - seeksec
 
                     self.skip_votes = []
                 if seek == "00:00:00" and not self.justvoledit:
