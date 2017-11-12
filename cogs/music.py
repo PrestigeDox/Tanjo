@@ -209,7 +209,7 @@ class Music:
         if index not in printlines.keys():
             return await ctx.error(f"The current queue only has pages 1-{len(printlines.keys())}")
 
-        printlines[index].insert(len(printlines[index]) - 2, f'\nPage: {index+1}/{len(printlines.keys())}')
+        printlines[index].insert(len(printlines[index]) - 1, f'\nPage: {index+1}/{len(printlines.keys())}')
         q_msg = await ctx.send('\n'.join(printlines[index]))
         for emoji in self.reaction_emojis:
             await q_msg.add_reaction(emoji)
