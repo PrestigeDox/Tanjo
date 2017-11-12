@@ -21,23 +21,10 @@ class Music:
         self.effects = {'pop': 'Pop', 'classic': 'Classic', 'jazz': 'Jazz', 'rock': 'Rock', 'bb': 'Bass Boost',
                         'normal': 'Normal', 'vocals': 'Vocals'}
 
-    @commands.command()
-    async def play(self, ctx):
-        """ Add a song to the playlist """
+    async def queue_song(self, ctx, song_name, effect, searchmode=0):
+
         message = ctx.message
         bot = self.bot
-        effect = 'None'
-        searchmode = 0
-        if '-rape' in message.content.split():
-            print('rape')
-            effect = 'rape'
-        elif '-c' in message.content.split():
-            print('chip')
-            effect = 'c'
-        elif '-k' in message.content.split():
-            effect = 'k'
-        if '-s' in message.content.split():
-            searchmode = 1
 
         # Handle funky embed connecting
         if message.guild not in bot.vc_clients:
@@ -68,11 +55,11 @@ class Music:
             await trying_msg.edit(embed=np_embed)
 
         # Smart way to go through the message and find out what's a flag and where our song name starts from
-        for n, item in enumerate(message.content.split()[1:], 1):
-            if not item.startswith('-'):
-                break
-
-        song_name = ' '.join(message.content.split()[n:])
+        # for n, item in enumerate(message.content.split()[1:], 1):
+        #     if not item.startswith('-'):
+        #         break
+        #
+        # song_name = ' '.join(message.content.split()[n+1:])
 
         # If we already have a player for this server, use it
         if message.guild in bot.players:
@@ -130,6 +117,21 @@ class Music:
 
             # Prepare the entry, music player, its time
             bot.loop.create_task(mplayer.prepare_entry(position - 1))
+
+    @commands.group(invoke_without_command=True)
+    async def play(self, ctx, *, song_name):
+        """ Add a song to the playlist """
+        await self.queue_song(ctx, song_name, 'None')
+
+    @play.command(aliases=['-k'])
+    async def karaoke(self, ctx, *, song_name):
+        """ Add a song to the playlist in karaoke mode """
+        await self.queue_song(ctx, song_name, 'k')
+
+    @play.command(aliases=['-s'])
+    async def search(self, ctx, *, song_name):
+        """ Search for a song on YouTube """
+        await self.queue_song(ctx, song_name, 'None', 1)
 
     @commands.command(aliases=['nowplaying', 'player'])
     async def np(self, ctx):
@@ -227,10 +229,10 @@ class Music:
 
             if str(reaction.emoji) == self.reaction_emojis[0]:
                 index = max(0, index-1)
-                await q_msg.edit(''.join(printlines[index]))
+                await q_msg.edit(content=''.join(printlines[index]))
             elif str(reaction.emoji) == self.reaction_emojis[1]:
                 index = min(len(printlines.keys())-1, index+1)
-                await q_msg.edit(''.join(printlines[index]))
+                await q_msg.edit(content=''.join(printlines[index]))
 
     @commands.command(aliases=['leave', 'destroy', 'dc'])
     async def disconnect(self, ctx):
@@ -261,9 +263,8 @@ class Music:
         if player.voice_client.is_playing():
             player.justvoledit = 1
             player.voice_client.stop()
-            seektm = datetime.datetime.fromtimestamp(player.accu_progress) - datetime.timedelta(hours=5, minutes=30)
+            seektm = datetime.datetime.utcfromtimestamp(player.accu_progress)
             self.bot.loop.create_task(player.play(str(seektm.strftime('%H:%M:%S.%f')), player.accu_progress))
-            print(str(time.strftime('%H:%M:%S', time.gmtime(player.accu_progress))))
         em = discord.Embed(title="Equalizer",
                            description=f":loud_sound: Equalizer has been set to {self.effects[eq.lower()]}.",
                            color=self.color)
@@ -332,7 +333,7 @@ class Music:
 
         player = self.bot.players[ctx.message.guild]
         duration = player.current_entry['duration']
-        timelist = seektime.split()[1].split(':')
+        timelist = seektime.split(':')
 
         if not len(timelist) == 3:
             return await ctx.error("Please provide time to seek to in the format, `hh:mm:ss``!")
@@ -344,8 +345,8 @@ class Music:
         player.state = "seeking"
         player.justseeked = 1
         player.voice_client.stop()
-        self.bot.loop.create_task(player.play(ctx.message.content.split(' ')[1],int(seek_seconds)))
-        await ctx.send("Seeking to %s" % ctx.message.content.split(' ')[1])
+        self.bot.loop.create_task(player.play(seektime, seek_seconds))
+        await ctx.send(f"Seeking to {seektime}")
     
     @commands.command()
     async def skip(self, ctx):
@@ -393,7 +394,7 @@ class Music:
             if player.voice_client.is_playing():
                 player.justvoledit = 1
                 player.voice_client.stop()
-                seektm = datetime.datetime.fromtimestamp(player.accu_progress) - datetime.timedelta(hours=5,minutes=30)
+                seektm = datetime.datetime.utcfromtimestamp(player.accu_progress)
                 self.bot.loop.create_task(player.play(str(seektm.strftime('%H:%M:%S.%f')), player.accu_progress))
         else:
             return await ctx.error("Volume value can only range from 0.0-2.0")
