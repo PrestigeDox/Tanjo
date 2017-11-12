@@ -134,12 +134,11 @@ class Player:
                     try:
                         if self.state in ['stopped', 'switching'] and not self.voice_client.is_playing():
                             print('\nwas stopped\n')
-                            if not self.lock.locked():
-                                self.bot.loop.create_task(self.play())
+                            self.bot.loop.create_task(self.play())
                         else:
                             return
                     except AttributeError:
-                        if not self.lock.locked():
+                        if not self.voice_client.is_playing():
                             self.bot.loop.create_task(self.play())
 
             # We'll be here only when repeat is set to True, just skip everything and queue the same song
@@ -154,7 +153,7 @@ class Player:
         'next' is provided as the functon to be called when
         the source is done playing
         """
-        print('lock',self.lock.locked())
+        print('lock', self.lock.locked())
         if self.death or self.voice_client.is_playing():
             return
 
@@ -162,8 +161,8 @@ class Player:
         volumestr = ' -filter:a "volume=%s"' % self.volume
 
         # This lock is the key to having only one entry being played at once
-        await self.lock.acquire()
-        if 1:
+        #await self.lock.acquire()
+        with await self.lock:
             now = self.playlist.entries[self.index]
             with await now['lock']:
 
@@ -284,7 +283,6 @@ class Player:
     # in 'play', also returns when volume was changed of seeking was done.
     def next(self, error):
         print('in normal next')
-        self.lock.release()
         if self.death or self.state == "seeking" or self.justvoledit or self.justseeked:
             print('normal next returned')
             self.justvoledit = 0
