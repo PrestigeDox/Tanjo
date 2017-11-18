@@ -1,12 +1,11 @@
 #!/bin/env python3
 
 import asyncio
-import datetime
 import discord
-import time
 
 from datetime import timedelta
 from discord.ext import commands
+from utils.musicstate import MusicState
 from utils import playlist
 from utils import player
 from utils.ytsearch import ytsearch
@@ -120,8 +119,8 @@ class Music:
                     entry, position = mplayer.playlist.add(url, message.author,
                                                            message.channel, info['entries'][0]['title'],
                                                            info['entries'][0]['duration'], effect,
-                                                           info['entries'][0]['thumbnails'][0]['url'], song_name,
-                                                           info['entries'][0]['is_live'])
+                                                           info['entries'][0]['thumbnails'][0]['url'],
+                                                           info['entries'][0]['is_live'], song_name)
                 # If not, we're passing it up to extract_info
                 else:
                     song = await ytsearch(bot, message, song_name)
@@ -135,7 +134,7 @@ class Music:
 
                     entry, position = mplayer.playlist.add(url, message.author, message.channel,
                                                            info['title'], info['duration'], effect, info['thumbnail'],
-                                                           song_name, info['is_live'])
+                                                           info['is_live'], song_name)
                 await ctx.send("**%s** was added to the queue at position %s, %s" % (
                     entry['title'], position, mplayer.playlist.estimate_time(position, mplayer)))
 
@@ -163,7 +162,7 @@ class Music:
         filled = "▰"
         unfilled = "▱"
         player = self.bot.players[ctx.message.guild]
-        if not player.state == 'stopped':
+        if not player.state == MusicState.STOPPED:
             ps = player.progress
             pt = player.current_entry['duration']
             # Bring the fraction of progress/duration to x/10, to use with progress bars
@@ -295,7 +294,7 @@ class Music:
 
         player.EQ = eq.lower()
         if player.voice_client.is_playing():
-            player.justvoledit = 1
+            player.volume_event.set()
             await player.reset()
         em = discord.Embed(title="Equalizer",
                            description=f":loud_sound: Equalizer has been set to {player.effects[eq.lower()]}.",
@@ -325,11 +324,11 @@ class Music:
             return await ctx.error(f"Value can only be between 1 and {len(player.playlist.entries)}")
 
         player.index = pickno - 1
-        if not player.voice_client.is_playing() and not player.state == "paused":
+        if not player.voice_client.is_playing() and not player.state == MusicState.PAUSED:
             self.bot.loop.create_task(player.prepare_entry())
             await ctx.send(f"Jumping to **{pickno}**!")
         else:
-            player.justjumped.set()
+            player.jump_event.set()
             await ctx.send(f"Will jump to **{pickno}** after the current track finishes playing!")
 
     @commands.command(aliases=['remove', 'rm'])
@@ -346,14 +345,14 @@ class Music:
     async def pause(self, ctx):
         """ Pause the player if it's playing """
         player = self.bot.players[ctx.message.guild]
-        if player.state == 'playing':
+        if player.state == MusicState.PLAYING:
             await player.pause()
 
     @commands.command()
     async def resume(self, ctx):
         """ Resume the player if it's paused """
         player = self.bot.players[ctx.message.guild]
-        if player.state == 'paused':
+        if player.state == MusicState.PAUSED:
             await player.resume()
 
     @commands.command()
@@ -377,8 +376,7 @@ class Music:
         if int(seek_seconds) > duration:
             return await ctx.error(f"Value can only be between 00:00:00 and {str(timedelta(seconds=duration))}")
 
-        player.state = "seeking"
-        player.justseeked.set()
+        player.seek_event.set()
         player.voice_client.stop()
         self.bot.loop.create_task(player.play(seektime, seek_seconds))
         await ctx.send(f"Seeking to {seektime}")
@@ -427,7 +425,7 @@ class Music:
             em = discord.Embed(title="Volume changed!", description=f":loud_sound: New volume is {volume}")
             await ctx.send(embed=em)
             if player.voice_client.is_playing():
-                player.justvoledit.set()
+                player.volume_event.set()
                 await player.reset()
         else:
             return await ctx.error("Volume value can only range from 0.0-2.0")

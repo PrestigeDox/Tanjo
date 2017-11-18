@@ -6,7 +6,9 @@ import discord
 import time
 
 from datetime import timedelta
+from enum import Enum
 from itertools import islice
+from utils.musicstate import MusicState
 
 import os
 from os import listdir
@@ -17,6 +19,11 @@ import subprocess
 import win_unicode_console
 
 win_unicode_console.enable()
+
+
+class EntryState(Enum):
+    PROCESSING = 0
+    DOWNLOADED = 1
 
 
 class Player:
@@ -37,7 +44,7 @@ class Player:
         self.qlock = asyncio.Lock()
         self.volume = 1.0
         self.download_lock = asyncio.Lock()
-        self.state = 'stopped'
+        self.state = MusicState.STOPPED
         self.current_time = None
         self.mypath = r"dload"
         self.index = 0
@@ -46,9 +53,9 @@ class Player:
         # R.I.P
         self.death = 0
 
-        self.justjumped = asyncio.Event()
-        self.justvoledit = asyncio.Event()
-        self.justseeked = asyncio.Event()
+        self.jump_event = asyncio.Event()
+        self.volume_event = asyncio.Event()
+        self.seek_event = asyncio.Event()
         # This is just original start time
         self.o_st = None
         self.autoplay = False
@@ -86,15 +93,16 @@ class Player:
                         'normal': 'Normal', 'vocals': 'Vocals', 'balanced': 'Balanced', 'easy': 'Easy Listening'}
 
     async def reset(self, seektime=None):
-        """ Nasty function that makes a player that will play from exactly when it was stopped """
+        """ Nasty function that makes a player that will play from exactly when it was stopped , this allows us to
+        change effects on the fly """
 
         self.voice_client.stop()
         prog = self.accu_progress
 
-        if self.justvoledit.is_set():
-            await self.justvoledit.wait()
-        if self.justseeked.is_set():
-            await self.justseeked.wait()
+        if self.volume_event.is_set():
+            await self.volume_event.wait()
+        if self.seek_event.is_set():
+            await self.seek_event.wait()
 
         if seektime is None:
             seektime = datetime.datetime.utcfromtimestamp(prog)
@@ -116,8 +124,8 @@ class Player:
             entry = self.playlist.entries[ind]
             if not self.repeat and not entry['is_live']:
                 if ind is None:
-                    if self.state in ['stopped', 'switching']:
-                        if not self.current_player is None and self.voice_client.is_playing():
+                    if self.state in [MusicState.STOPPED, MusicState.SWITCHING]:
+                        if self.current_player is not None and self.voice_client.is_playing():
                             return
 
                     with await self.lock:
@@ -130,9 +138,9 @@ class Player:
 
                         # If an entry is currently being downloaded, the status is 'processing', so we don't bother
                         # with it and return
-                        if entry['status'] == 'processing':
+                        if entry['status'] == EntryState.PROCESSING:
                             return
-                        elif entry['status'] == 'downloaded':
+                        elif entry['status'] == EntryState.DOWNLOADED:
                             with await self.lock:
                                 self.bot.loop.create_task(self.play())
                                 return
@@ -143,9 +151,9 @@ class Player:
                     # download and add the key, this prevents downloading of any entry more than once
                     if 'filename' not in entry.keys():
 
-                        entry['status'] = 'processing'
+                        entry['status'] = EntryState.PROCESSING
                         result = await self.bot.downloader.extract_info(self.bot.loop, entry['url'], download=False)
-                        entry['status'] = 'downloaded'
+                        entry['status'] = EntryState.DOWNLOADED
                         fn = self.bot.downloader.ytdl.prepare_filename(result)
                         onlyfiles = [f for f in listdir(self.mypath) if isfile(join(self.mypath, f))]
 
@@ -171,7 +179,7 @@ class Player:
                     # the player, also makes sure to keep the queue in sync by requesting for player's
                     # lock before queueing play to the loop
                     try:
-                        if self.state in ['stopped', 'switching'] and not self.voice_client.is_playing():
+                        if self.state in [MusicState.STOPPED, MusicState.SWITCHING] and not self.voice_client.is_playing():
                             print('\nwas stopped\n')
                             self.bot.loop.create_task(self.play())
                         else:
@@ -204,13 +212,13 @@ class Player:
         with await self.lock:
             now = self.playlist.entries[self.index]
             with await now['lock']:
-
+                print(str(now['is_live']))
                 # If somehow because of some magical occurences, there's no filename before play is called
                 if not now['is_live'] and 'filename' not in now.keys():
                     print(now)
                     return
 
-                self.state = 'playing'
+                self.state = MusicState.PLAYING
 
                 if now['effect'] == 'None':
                     addon = ""
@@ -237,7 +245,7 @@ class Player:
                         p1.wait()
                         procm.edit(content="Done! :white_check_mark:")
                     now['filename'] = now['filename'].split(self.slash)[0] + self.slash + 'karaoke_' + \
-                                      now['filename'].split(self.slash)[1].split('.')[0] + '.wav'
+                        now['filename'].split(self.slash)[1].split('.')[0] + '.wav'
 
                 if not now['is_live']:
                     ytdl_player = discord.FFmpegPCMAudio(
@@ -245,6 +253,9 @@ class Player:
                         before_options="-nostdin -ss %s" % seek,
                         options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
                 else:
+                    # The mess here fixes an FFMpeg heck up, they don't send trailing CLRFs with their http requests
+                    # So i've manually added a trailing CLRF here
+                    # Also no -ss here, seeking doesn't work on livestreams
                     ytdl_player = discord.FFmpegPCMAudio(
                         now['url'],
                         before_options="-nostdin -nostats -loglevel 0 "
@@ -265,25 +276,25 @@ class Player:
 
                 self.voice_client.play(ytdl_player, after=self.next)
 
-                if not self.justvoledit.is_set():
+                if not self.volume_event.is_set():
                     if seeksec == 0:
                         self.start_time = time.time()
                     else:
                         self.start_time = time.time() - seeksec
 
                     self.skip_votes = []
-                if seek == "00:00:00" and not self.justvoledit.is_set():
+                if seek == "00:00:00" and not self.volume_event.is_set():
                     self.bot.loop.create_task(self.manage_nowplaying())
 
     # Both 'pause' and 'resume' will set current_time so that using the
     # NowPlaying command doesn't change time when the song isn't even playing
     async def pause(self):
-        self.state = 'paused'
+        self.state = MusicState.PAUSED
         self.current_time = time.time()
         self.voice_client.pause()
 
     async def resume(self):
-        self.state = 'playing'
+        self.state = MusicState.PLAYING
         self.current_time = time.time()
         self.voice_client.resume()
 
@@ -336,14 +347,14 @@ class Player:
     # in 'play', also returns when volume was changed of seeking was done.
     def next(self, error):
         print('in normal next')
-        if self.death or self.state == "seeking" or self.justvoledit.is_set() or self.justseeked.is_set():
+        if self.death or self.volume_event.is_set() or self.seek_event.is_set():
             print('normal next returned')
 
-            if self.justvoledit.is_set():
-                self.justvoledit.clear()
+            if self.volume_event.is_set():
+                self.volume_event.clear()
 
-            if self.justseeked.is_set():
-                self.justseeked.clear()
+            if self.seek_event.is_set():
+                self.seek_event.clear()
             return
         self.bot.loop.create_task(self.real_next())
 
@@ -352,12 +363,12 @@ class Player:
     # autoplay is always the last condition to be checked, so manually queued songs
     # will be served before autoplay_manager is called
     async def real_next(self):
-        self.state = 'switching'
+        self.state = MusicState.SWITCHING
         if len(collections.deque(islice(self.playlist.entries, self.index, len(self.playlist.entries) - 1))) > 0:
-            if not self.repeat and not self.justjumped:
+            if not self.repeat and not self.jump_event.is_set():
                 self.index += 1
-            if self.justjumped:
-                self.justjumped = 0
+            if self.jump_event.is_set():
+                self.jump_event.clear()
             with await self.playlist.entries[self.index]['lock']:
                 self.bot.loop.create_task(self.prepare_entry(self.index))
 
@@ -371,7 +382,7 @@ class Player:
 
         else:
             self.index += 1
-            self.state = 'stopped'
+            self.state = MusicState.STOPPED
 
     # Following some minimal scraping, autoplay links are pulled
     # at times this might be empty so we just get the other entries below it,
@@ -402,7 +413,7 @@ class Player:
                                 altitems[song_choice].select('a[href^=/watch]')[0].attrs.get('href').split('/')[1]:
                             test = True
                             break
-                except:
+                except (IndexError, KeyError):
                     pass
 
                 if len(altitems[song_choice].select('.yt-badge-live')) or test:
@@ -429,7 +440,7 @@ class Player:
     # if not then the real current_time is used.
     @property
     def progress(self):
-        if not self.state == 'paused':
+        if not self.state == MusicState.PAUSED:
             self.current_time = time.time()
         if not self.current_entry['is_live']:
             return round(self.current_time - self.start_time)
@@ -438,6 +449,6 @@ class Player:
 
     @property
     def accu_progress(self):
-        if not self.state == 'paused':
+        if not self.state == MusicState.PAUSED:
             self.current_time = time.time()
         return self.current_time - self.start_time
