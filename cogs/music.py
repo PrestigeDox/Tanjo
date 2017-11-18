@@ -18,11 +18,9 @@ class Music:
         self.bot = bot
         self.reaction_emojis = ['⬅', '➡']
         self.color = bot.user_color
-        self.effects = {'pop': 'Pop', 'classic': 'Classic', 'jazz': 'Jazz', 'rock': 'Rock', 'bb': 'Bass Boost',
-                        'normal': 'Normal', 'vocals': 'Vocals'}
 
-    async def queue_song(self, ctx, song_name, effect, searchmode=0):
-
+    async def _queue(self, ctx, song_name, effect, searchmode=0):
+        """ Exists separately solely to be able to use subcommands """
         message = ctx.message
         bot = self.bot
 
@@ -30,7 +28,7 @@ class Music:
         if message.guild not in bot.vc_clients:
             np_embed = discord.Embed(title='Connecting...', colour=self.color)
             np_embed.set_thumbnail(url='https://imgur.com/3QIBGl3.png')
-            trying_msg = await message.channel.send(embed=np_embed)
+            trying_msg = await ctx.send(embed=np_embed)
 
             # Error if you're trying to listen music out of thin air/not in a voice channel
             if message.author.voice is None:
@@ -74,25 +72,39 @@ class Music:
             bot.players[message.guild] = mplayer
 
         # Using the player's qlock, ensuring that always the first received request is queued
-        with await mplayer.qlock, message.channel.typing():
+        with await mplayer.qlock, ctx.channel.typing():
             print('\nplay got Q lock\n')
 
             # If it's a link
             if 'watch?' in song_name:
                 info = await bot.downloader.extract_info(bot.loop, song_name, download=False, process=False,
                                                          retry_on_error=True)
-                entry, position = mplayer.playlist.add(info['webpage_url'], message.author, message.channel,
-                                                       info['title'], info['duration'], effect, info['thumbnail'])
-                await message.channel.send("**%s** was added to the queue at position %s, %s" % (
+                if info['is_live']:
+                    url = [x['url'] for x in info['formats'] if x['height'] == 360][0]
+                else:
+                    url = info['webpage_url']
+                entry, position = mplayer.playlist.add(url, message.author, message.channel,
+                                                       info['title'], info['duration'], effect, info['thumbnail'],
+                                                       info['is_live'])
+                await ctx.send("**%s** was added to the queue at position %s, %s" % (
                     entry['title'], position, mplayer.playlist.estimate_time(position, mplayer)))
 
             # If it's a playlist
             elif 'list' in song_name:
                 info = await bot.downloader.extract_info(bot.loop, song_name, download=False, process=False,
                                                          retry_on_error=True)
-                preparing_msg = await message.channel.send("Processing playlist...")
-                position = await mplayer.playlist.async_pl(info['webpage_url'], message.author, message.channel)
-                await preparing_msg.edit("Your playlist was added!")
+                preparing_msg = await ctx.send("Processing playlist...")
+                entries, bad_entries = await mplayer.playlist.async_pl(info['webpage_url'], message.author,
+                                                                       message.channel)
+                lst_bad = '\n'.join(bad_entries)
+
+                # 1-1=0, not 0 = 1, so, that means its one entry, so, entr'y', if not, entr'ies'
+                base_pl = f"{entries} entr{'y' if not entries-1 else 'ies'} added!"
+
+                if bad_entries:
+                    bad_pl = f"\nEntr{'y' if not len(bad_entries)-1 else 'ies'} that couldn't be added:\n{lst_bad}"
+
+                await preparing_msg.edit(base_pl + bad_pl if bad_entries else base_pl)
 
             # Plain text
             else:
@@ -100,19 +112,31 @@ class Music:
                 if not searchmode:
                     info = await bot.downloader.extract_info(bot.loop, 'ytsearch1:'+song_name, download=False,
                                                              process=True, retry_on_error=True)
-                    entry, position = mplayer.playlist.add(info['entries'][0]['webpage_url'], message.author,
+                    if info['entries'][0]['is_live']:
+                        url = [x['url'] for x in info['entries'][0]['formats'] if x['height'] == 360][0]
+                    else:
+                        url = info['entries'][0]['webpage_url']
+
+                    entry, position = mplayer.playlist.add(url, message.author,
                                                            message.channel, info['entries'][0]['title'],
                                                            info['entries'][0]['duration'], effect,
-                                                           info['entries'][0]['thumbnails'][0]['url'], song_name)
+                                                           info['entries'][0]['thumbnails'][0]['url'], song_name,
+                                                           info['entries'][0]['is_live'])
                 # If not, we're passing it up to extract_info
                 else:
                     song = await ytsearch(bot, message, song_name)
                     info = await bot.downloader.extract_info(bot.loop, song[1], download=False, process=False,
                                                              retry_on_error=True)
-                    entry, position = mplayer.playlist.add(info['webpage_url'], message.author, message.channel,
+
+                    if info['is_live']:
+                        url = [x['url'] for x in info['formats'] if x['height'] == 360][0]
+                    else:
+                        url = info['webpage_url']
+
+                    entry, position = mplayer.playlist.add(url, message.author, message.channel,
                                                            info['title'], info['duration'], effect, info['thumbnail'],
-                                                           song_name)
-                await message.channel.send("**%s** was added to the queue at position %s, %s" % (
+                                                           song_name, info['is_live'])
+                await ctx.send("**%s** was added to the queue at position %s, %s" % (
                     entry['title'], position, mplayer.playlist.estimate_time(position, mplayer)))
 
             # Prepare the entry, music player, its time
@@ -121,17 +145,17 @@ class Music:
     @commands.group(invoke_without_command=True)
     async def play(self, ctx, *, song_name):
         """ Add a song to the playlist """
-        await self.queue_song(ctx, song_name, 'None')
+        await self._queue(ctx, song_name, 'None')
 
     @play.command(aliases=['-k'])
     async def karaoke(self, ctx, *, song_name):
         """ Add a song to the playlist in karaoke mode """
-        await self.queue_song(ctx, song_name, 'k')
+        await self._queue(ctx, song_name, 'k')
 
     @play.command(aliases=['-s'])
     async def search(self, ctx, *, song_name):
         """ Search for a song on YouTube """
-        await self.queue_song(ctx, song_name, 'None', 1)
+        await self._queue(ctx, song_name, 'None', 1)
 
     @commands.command(aliases=['nowplaying', 'player'])
     async def np(self, ctx):
@@ -160,13 +184,18 @@ class Music:
             np_embed = discord.Embed(title=player.current_entry['title'],
                                      description='added by **%s**' % player.current_entry['author'].name,
                                      url=player.current_entry['url'], colour=self.color)
-            np_embed.add_field(name='Progress', value=prog_str)
+            np_embed.add_field(name='Autoplay', value='On' if player.autoplay else 'Off')
+            np_embed.add_field(name='Equalizer', value=player.effects[player.EQ])
+            if not player.current_entry['is_live']:
+                np_embed.add_field(name='Progress', value=prog_str)
+            else:
+                np_embed.add_field(name='Progress', value=(filled * 10) + f" {song_progress}/ Live :red_circle:")
             np_embed.set_image(url=player.current_entry['thumb'])
             np_embed.set_author(name='Now Playing', icon_url=player.current_entry['author'].avatar_url)
 
-            await ctx.message.channel.send(embed=np_embed, delete_after=None)
+            await ctx.send(embed=np_embed, delete_after=None)
         else:
-            await ctx.message.channel.send("Nothing is playing!")
+            await ctx.send("Nothing is playing!")
 
     @commands.command(aliases=['list', 'q'])
     async def queue(self, ctx, *, index: int=None):
@@ -254,19 +283,22 @@ class Music:
     async def eq(self, ctx, *, eq: str=None):
         """ Choose from a multitude of equalizer effects to enhance your music """
         player = self.bot.players[ctx.message.guild]
+
+        if eq is None:
+            eq_list = '\n'.join([f"`{effect}` - {full_name}" for effect, full_name in player.effects.items()])
+            return await ctx.send(f'Available EQ Effects are:\n{eq_list}')
+
         eq = 'normal' if eq.lower() == 'reset' else eq
 
-        if not eq.lower() in self.effects.keys():
+        if not eq.lower() in player.effects.keys():
             return await ctx.error(f"{eq}, is not a valid EQ effect.")
 
         player.EQ = eq.lower()
         if player.voice_client.is_playing():
             player.justvoledit = 1
-            player.voice_client.stop()
-            seektm = datetime.datetime.utcfromtimestamp(player.accu_progress)
-            self.bot.loop.create_task(player.play(str(seektm.strftime('%H:%M:%S.%f')), player.accu_progress))
+            await player.reset()
         em = discord.Embed(title="Equalizer",
-                           description=f":loud_sound: Equalizer has been set to {self.effects[eq.lower()]}.",
+                           description=f":loud_sound: Equalizer has been set to {player.effects[eq.lower()]}.",
                            color=self.color)
         await ctx.send(embed=em)
 
@@ -291,14 +323,13 @@ class Music:
 
         if pickno - 1 < 0 or pickno > len(player.playlist.entries):
             return await ctx.error(f"Value can only be between 1 and {len(player.playlist.entries)}")
-            return
 
         player.index = pickno - 1
         if not player.voice_client.is_playing() and not player.state == "paused":
             self.bot.loop.create_task(player.prepare_entry())
             await ctx.send(f"Jumping to **{pickno}**!")
         else:
-            player.justjumped = 1
+            player.justjumped.set()
             await ctx.send(f"Will jump to **{pickno}** after the current track finishes playing!")
 
     @commands.command(aliases=['remove', 'rm'])
@@ -332,6 +363,10 @@ class Music:
             return await ctx.error("Please provide time to seek to in the format, `hh:mm:ss``!")
 
         player = self.bot.players[ctx.message.guild]
+
+        if player.current_entry['is_live']:
+            return await ctx.error("Can't seek on a livestream!")
+
         duration = player.current_entry['duration']
         timelist = seektime.split(':')
 
@@ -343,7 +378,7 @@ class Music:
             return await ctx.error(f"Value can only be between 00:00:00 and {str(timedelta(seconds=duration))}")
 
         player.state = "seeking"
-        player.justseeked = 1
+        player.justseeked.set()
         player.voice_client.stop()
         self.bot.loop.create_task(player.play(seektime, seek_seconds))
         await ctx.send(f"Seeking to {seektime}")
@@ -392,10 +427,8 @@ class Music:
             em = discord.Embed(title="Volume changed!", description=f":loud_sound: New volume is {volume}")
             await ctx.send(embed=em)
             if player.voice_client.is_playing():
-                player.justvoledit = 1
-                player.voice_client.stop()
-                seektm = datetime.datetime.utcfromtimestamp(player.accu_progress)
-                self.bot.loop.create_task(player.play(str(seektm.strftime('%H:%M:%S.%f')), player.accu_progress))
+                player.justvoledit.set()
+                await player.reset()
         else:
             return await ctx.error("Volume value can only range from 0.0-2.0")
 

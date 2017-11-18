@@ -1,8 +1,10 @@
 import asyncio
-import discord
-import time
 import bs4
 import collections
+import datetime
+import discord
+import time
+
 from datetime import timedelta
 from itertools import islice
 
@@ -44,22 +46,60 @@ class Player:
         # R.I.P
         self.death = 0
 
-        self.justjumped = 0
-        self.justvoledit = 0
-        self.justseeked = 0
+        self.justjumped = asyncio.Event()
+        self.justvoledit = asyncio.Event()
+        self.justseeked = asyncio.Event()
         # This is just original start time
         self.o_st = None
         self.autoplay = False
         self.EQ = 'normal'
 
-        # Heck PEP8 i wrote this in 15 minutes of deliriousness i dont know what any of this means, but, but silver lining is it works, yeah im ignoring line length here
+        # Heck PEP8 i wrote this in 15 minutes of deliriousness i dont know what any of this means, but, but silver
+        # lining is it works, yeah im ignoring line length here
         self.EQEffects = {'normal': "",
-                          'pop': ' -af equalizer=f=500:width_type=h:w=300:g=2,equalizer=f=1000:width_type=h:w=100:g=3,equalizer=f=2000:width_type=h:w=100:g=-2,equalizer=f=4000:width_type=h:w=100:g=-4,equalizer=f=8000:width_type=h:w=100:g=-4,equalizer=f=16000:width_type=h:w=100:g=-4',
-                          'classic': ' -af equalizer=f=250:width_type=h:w=100:g=-6,equalizer=f=1000:width_type=h:w=100:g=1,equalizer=f=4000:width_type=h:w=100:g=6,equalizer=f=8000:width_type=h:w=100:g=6,equalizer=f=16000:width_type=h:w=100:g=6',
-                          'jazz': ' -af equalizer=f=250:width_type=h:w=100:g=5,equalizer=f=500:width_type=h:w=100:g=-5,equalizer=f=1000:width_type=h:w=100:g=-2,equalizer=f=2000:width_type=h:w=100:g=2,equalizer=f=4000:width_type=h:w=100:g=-1,equalizer=f=8000:width_type=h:w=100:g=-1,equalizer=f=16000:width_type=h:w=100:g=-1',
-                          'rock': ' -af equalizer=f=250:width_type=h:w=100:g=3,equalizer=f=500:width_type=h:w=100:g=-9,equalizer=f=1000:width_type=h:w=100:g=-1,equalizer=f=2000:width_type=h:w=100:g=3,equalizer=f=4000:width_type=h:w=100:g=3,equalizer=f=8000:width_type=h:w=100:g=3,equalizer=f=16000:width_type=h:w=100:g=3',
+                          'pop': ' -af equalizer=f=500:width_type=h:w=300:g=2,equalizer=f=1000:width_type=h:w=100:g=3,'
+                                 'equalizer=f=2000:width_type=h:w=100:g=-2,equalizer=f=4000:width_type=h:w=100:g=-4,'
+                                 'equalizer=f=8000:width_type=h:w=100:g=-4,equalizer=f=16000:width_type=h:w=100:g=-4',
+                          'classic': ' -af equalizer=f=250:width_type=h:w=100:g=-6,'
+                                     'equalizer=f=1000:width_type=h:w=100:g=1,'
+                                     'equalizer=f=4000:width_type=h:w=100:g=6,'
+                                     'equalizer=f=8000:width_type=h:w=100:g=6,'
+                                     'equalizer=f=16000:width_type=h:w=100:g=6',
+                          'jazz': ' -af equalizer=f=250:width_type=h:w=100:g=5,'
+                                  'equalizer=f=500:width_type=h:w=100:g=-5,equalizer=f=1000:width_type=h:w=100:g=-2,'
+                                  'equalizer=f=2000:width_type=h:w=100:g=2,equalizer=f=4000:width_type=h:w=100:g=-1,'
+                                  'equalizer=f=8000:width_type=h:w=100:g=-1,equalizer=f=16000:width_type=h:w=100:g=-1',
+                          'rock': ' -af equalizer=f=250:width_type=h:w=100:g=3,'
+                                  'equalizer=f=500:width_type=h:w=100:g=-9,equalizer=f=1000:width_type=h:w=100:g=-1,'
+                                  'equalizer=f=2000:width_type=h:w=100:g=3,equalizer=f=4000:width_type=h:w=100:g=3,'
+                                  'equalizer=f=8000:width_type=h:w=100:g=3,equalizer=f=16000:width_type=h:w=100:g=3',
+                          'balanced': ' -af equalizer=f=32:width_type=h:w=100:g=3,'
+                                  'equalizer=f=64:width_type=h:w=100:g=2,equalizer=f=500:width_type=h:w=100:g=-1,'
+                                  'equalizer=f=1000:width_type=h:w=100:g=-2,equalizer=f=4000:width_type=h:w=100:g=1,'
+                                  'equalizer=f=8000:width_type=h:w=100:g=3,equalizer=f=16000:width_type=h:w=100:g=3',
                           'bb': ' -af bass=g=8',
-                          'vocals': ' -af highpass=f=200,lowpass=f=3000'}
+                          'vocals': ' -af compand=.3|.3:1|1:-90/-60|-60/-40|-40/-30|-20/-20:6:0:-90:0.2',
+                          'easy': ' -af earwax'
+                          }
+
+        self.effects = {'pop': 'Pop', 'classic': 'Classic', 'jazz': 'Jazz', 'rock': 'Rock', 'bb': 'Bass Boost',
+                        'normal': 'Normal', 'vocals': 'Vocals', 'balanced': 'Balanced', 'easy': 'Easy Listening'}
+
+    async def reset(self, seektime=None):
+        """ Nasty function that makes a player that will play from exactly when it was stopped """
+
+        self.voice_client.stop()
+        prog = self.accu_progress
+
+        if self.justvoledit.is_set():
+            await self.justvoledit.wait()
+        if self.justseeked.is_set():
+            await self.justseeked.wait()
+
+        if seektime is None:
+            seektime = datetime.datetime.utcfromtimestamp(prog)
+
+        self.bot.loop.create_task(self.play(str(seektime.strftime('%H:%M:%S.%f')), prog))
 
     async def prepare_entry(self, ind=None):
         """
@@ -73,7 +113,8 @@ class Player:
 
         with await self.download_lock:
 
-            if not self.repeat:
+            entry = self.playlist.entries[ind]
+            if not self.repeat and not entry['is_live']:
                 if ind is None:
                     if self.state in ['stopped', 'switching']:
                         if not self.current_player is None and self.voice_client.is_playing():
@@ -82,8 +123,6 @@ class Player:
                     with await self.lock:
                         self.bot.loop.create_task(self.play())
                         return
-
-                entry = self.playlist.entries[ind]
 
                 with await entry['lock']:
 
@@ -167,7 +206,7 @@ class Player:
             with await now['lock']:
 
                 # If somehow because of some magical occurences, there's no filename before play is called
-                if not 'filename' in now.keys():
+                if not now['is_live'] and 'filename' not in now.keys():
                     print(now)
                     return
 
@@ -200,10 +239,19 @@ class Player:
                     now['filename'] = now['filename'].split(self.slash)[0] + self.slash + 'karaoke_' + \
                                       now['filename'].split(self.slash)[1].split('.')[0] + '.wav'
 
-                ytdl_player = discord.FFmpegPCMAudio(
-                    now['filename'],
-                    before_options="-nostdin -ss %s" % seek,
-                    options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
+                if not now['is_live']:
+                    ytdl_player = discord.FFmpegPCMAudio(
+                        now['filename'],
+                        before_options="-nostdin -ss %s" % seek,
+                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
+                else:
+                    ytdl_player = discord.FFmpegPCMAudio(
+                        now['url'],
+                        before_options="-nostdin -nostats -loglevel 0 "
+                                       '''-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'''
+                                       '''(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'''
+                                       "$'\r\n'"+'''"X-Forwarded-For: 0.0.0.0"'''+"$'\r\n'",
+                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
 
                 # So it might seem like you can only set Equalizer and Volume once,
                 # the code below facilitates changes at runtime all thanks to FFmpeg,
@@ -217,15 +265,14 @@ class Player:
 
                 self.voice_client.play(ytdl_player, after=self.next)
 
-                if not self.justvoledit:
+                if not self.justvoledit.is_set():
                     if seeksec == 0:
                         self.start_time = time.time()
-                        self.o_st = self.start_time
                     else:
                         self.start_time = time.time() - seeksec
 
                     self.skip_votes = []
-                if seek == "00:00:00" and not self.justvoledit:
+                if seek == "00:00:00" and not self.justvoledit.is_set():
                     self.bot.loop.create_task(self.manage_nowplaying())
 
     # Both 'pause' and 'resume' will set current_time so that using the
@@ -250,7 +297,13 @@ class Player:
         np_embed = discord.Embed(title=player.current_entry['title'],
                                  description='added by **%s**' % player.current_entry['author'].name,
                                  url=player.current_entry['url'], colour=0xffffff)
-        np_embed.add_field(name='Duration', value=prog_str)
+        if not self.current_entry['is_live']:
+            np_embed.add_field(name='Duration', value=prog_str)
+        np_embed.add_field(name='Autoplay', value='On' if self.autoplay else 'Off')
+        np_embed.add_field(name='Equalizer', value=self.effects[self.EQ])
+        if self.current_entry['is_live']:
+            tm = str(timedelta(seconds=self.current_entry['duration'])).lstrip('0').lstrip(':')
+            np_embed.add_field(name='Progress', value=("▰"*10)+f" {tm}/ Live :red_circle:", inline=False)
         np_embed.set_image(url=player.current_entry['thumb'])
         np_embed.set_author(name='Now Playing', icon_url=player.current_entry['author'].avatar_url)
 
@@ -264,7 +317,7 @@ class Player:
                 if msg != np_msg:
                     try:
                         await np_msg.delete()
-                    except:
+                    except discord.Forbidden:
                         pass
                     self.bot.np_msgs[self.current_entry['channel'].guild] = None
         try:
@@ -274,7 +327,7 @@ class Player:
             else:
                 self.bot.np_msgs[self.current_entry['channel'].guild] = await self.current_entry['channel'].send(
                     embed=np_embed, delete_after=None)
-        except:
+        except KeyError:
             self.bot.np_msgs[self.current_entry['channel'].guild] = await self.current_entry['channel'].send(
                 embed=np_embed, delete_after=None)
 
@@ -283,10 +336,14 @@ class Player:
     # in 'play', also returns when volume was changed of seeking was done.
     def next(self, error):
         print('in normal next')
-        if self.death or self.state == "seeking" or self.justvoledit or self.justseeked:
+        if self.death or self.state == "seeking" or self.justvoledit.is_set() or self.justseeked.is_set():
             print('normal next returned')
-            self.justvoledit = 0
-            self.justseeked = 0
+
+            if self.justvoledit.is_set():
+                self.justvoledit.clear()
+
+            if self.justseeked.is_set():
+                self.justseeked.clear()
             return
         self.bot.loop.create_task(self.real_next())
 
@@ -374,7 +431,10 @@ class Player:
     def progress(self):
         if not self.state == 'paused':
             self.current_time = time.time()
-        return round(self.current_time - self.start_time)
+        if not self.current_entry['is_live']:
+            return round(self.current_time - self.start_time)
+        else:
+            return self.current_entry['duration'] + round(self.current_time - self.start_time)
 
     @property
     def accu_progress(self):
