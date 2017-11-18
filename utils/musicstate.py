@@ -6,3 +6,4 @@ class MusicState(Enum):
     PLAYING = 1
     SWITCHING = 2
     PAUSED = 3
+    DEAD = 4

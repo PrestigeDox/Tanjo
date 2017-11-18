@@ -9,6 +9,7 @@ from datetime import timedelta
 from enum import Enum
 from itertools import islice
 from utils.musicstate import MusicState
+from utils.playlist import Playlist
 
 import os
 from os import listdir
@@ -27,15 +28,16 @@ class EntryState(Enum):
 
 
 class Player:
-    def __init__(self, bot, voice_client, playlist):
+    def __init__(self, bot, voice_client):
         self.bot = bot
         self.voice_client = voice_client
-        self.state = 0
+
         if os.name == 'nt':
             self.slash = '\\'
         else:
             self.slash = '/'
-        self.playlist = playlist
+
+        self.playlist = Playlist(bot)
         self.current_player = None
         self.current_entry = None
         self.start_time = None
@@ -46,23 +48,17 @@ class Player:
         self.download_lock = asyncio.Lock()
         self.state = MusicState.STOPPED
         self.current_time = None
-        self.mypath = r"dload"
         self.index = 0
         self.repeat = 0
-
-        # R.I.P
-        self.death = 0
 
         self.jump_event = asyncio.Event()
         self.volume_event = asyncio.Event()
         self.seek_event = asyncio.Event()
         # This is just original start time
-        self.o_st = None
         self.autoplay = False
         self.EQ = 'normal'
 
-        # Heck PEP8 i wrote this in 15 minutes of deliriousness i dont know what any of this means, but, but silver
-        # lining is it works, yeah im ignoring line length here
+        # This used to heck PEP8, but as a devoted follower of PEP8, i have taken effort to bring this in line with PEP8
         self.EQEffects = {'normal': "",
                           'pop': ' -af equalizer=f=500:width_type=h:w=300:g=2,equalizer=f=1000:width_type=h:w=100:g=3,'
                                  'equalizer=f=2000:width_type=h:w=100:g=-2,equalizer=f=4000:width_type=h:w=100:g=-4,'
@@ -116,7 +112,7 @@ class Player:
         no case will the voice client be requested to play two AudioSources
         at once. 'ind' is the index of the entry to be prepared/played
         """
-        if self.death:
+        if self.state == MusicState.DEAD:
             return
 
         with await self.download_lock:
@@ -155,10 +151,11 @@ class Player:
                         result = await self.bot.downloader.extract_info(self.bot.loop, entry['url'], download=False)
                         entry['status'] = EntryState.DOWNLOADED
                         fn = self.bot.downloader.ytdl.prepare_filename(result)
-                        onlyfiles = [f for f in listdir(self.mypath) if isfile(join(self.mypath, f))]
+                        onlyfiles = [f for f in listdir(self.bot.downloader.download_folder)
+                                     if isfile(join(self.bot.downloader.download_folder, f))]
 
                         # Check if this has been previously downloaded, why waste bandwidth
-                        if not fn.split(self.mypath + self.slash)[1] in onlyfiles:
+                        if not fn.split(self.bot.downloader.download_folder + self.slash)[1] in onlyfiles:
                             x = await entry['channel'].send("Caching **%s** :arrow_double_down:" % entry['title'],
                                                             delete_after=None)
 
@@ -201,7 +198,7 @@ class Player:
         the source is done playing
         """
         print('lock', self.lock.locked())
-        if self.death or self.voice_client.is_playing():
+        if self.state == MusicState.DEAD or self.voice_client.is_playing():
             return
 
         # Make a volume string to feed to ffmpeg 
@@ -235,7 +232,7 @@ class Player:
                 # is guessed as mono and Voila! Karaoke
                 elif now['effect'] == 'k':
                     addon = ""
-                    onlyfiles = [f for f in listdir(self.mypath) if isfile(join(self.mypath, f))]
+                    onlyfiles = [f for f in listdir(self.bot.downloader.download_folder) if isfile(join(self.bot.downloader.download_folder, f))]
                     if not 'karaoke_' + now['filename'].split(self.slash)[1] in onlyfiles:
                         procm = await now['channel'].send("Processing karaoke! :microphone:")
                         p1 = subprocess.Popen(
@@ -299,7 +296,7 @@ class Player:
         self.voice_client.resume()
 
     async def manage_nowplaying(self):
-        if self.death:
+        if self.state == MusicState.DEAD:
             return
 
         player = self
@@ -347,7 +344,7 @@ class Player:
     # in 'play', also returns when volume was changed of seeking was done.
     def next(self, error):
         print('in normal next')
-        if self.death or self.volume_event.is_set() or self.seek_event.is_set():
+        if self.state == MusicState.DEAD or self.volume_event.is_set() or self.seek_event.is_set():
             print('normal next returned')
 
             if self.volume_event.is_set():
@@ -391,7 +388,7 @@ class Player:
     # if the live label on the item exists or not, the entry to be queued
     # is determined.
     async def autoplay_manager(self):
-        if self.death:
+        if self.state == MusicState.DEAD:
             return
 
         with await self.download_lock:

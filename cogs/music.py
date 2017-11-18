@@ -3,11 +3,11 @@
 import asyncio
 import discord
 
+from collections import defaultdict
 from datetime import timedelta
 from discord.ext import commands
 from utils.musicstate import MusicState
-from utils import playlist
-from utils import player
+from utils.player import Player
 from utils.ytsearch import ytsearch
 
 
@@ -65,9 +65,8 @@ class Music:
         # Make a player object if we don't
         else:
             vc = bot.vc_clients[message.guild]
-            pl = playlist.Playlist(bot)
             print(dir(vc.ws))
-            mplayer = player.Player(bot, vc, pl)
+            mplayer = Player(bot, vc)
             bot.players[message.guild] = mplayer
 
         # Using the player's qlock, ensuring that always the first received request is queued
@@ -203,7 +202,8 @@ class Music:
             index -= 1
 
         player = self.bot.players[ctx.message.guild]
-        printlines = {0: ['```py']}
+        printlines = defaultdict(list)
+        printlines[0].append(['```py'])
         current_page = 0
         for i, item in enumerate(player.playlist, 1):
             nextline = '{}. {} added by {}\n'.format(i, item['title'], item['author'].name).strip()
@@ -222,7 +222,6 @@ class Music:
             if currentpagesum + len(nextline) + 20 > 2000:
                 printlines[current_page].append('```')
                 current_page += 1
-                printlines[current_page] = []
                 printlines[current_page].append('```py')
 
             printlines[current_page].append(nextline)
@@ -267,7 +266,7 @@ class Music:
         """ Make the bot leave your voice channel """
         try:
             player = self.bot.players[ctx.message.guild]
-            player.death = 1
+            player.state = MusicState.DEAD
             self.bot.players.pop(ctx.message.guild)
         except KeyError:
             return
