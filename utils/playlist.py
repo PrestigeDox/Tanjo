@@ -49,7 +49,7 @@ class Playlist:
         broken_entries = []
         for item in info['entries']:
             try:
-                entry, post = await self.add_pl_entry(info['webpage_url'].split('playlist?list=')[0]+'watch?v=%s' % item['id'],
+                entry, post = await self._add_pl_entry(info['webpage_url'].split('playlist?list=')[0]+'watch?v=%s' % item['id'],
                                                       author, channel)
 
             # Bad entry in the playlist, might be deleted videos at times
