@@ -36,7 +36,7 @@ class Playlist:
 
     async def _add_pl_entry(self, url, author, channel):
         info = await self.bot.downloader.extract_info(self.bot.loop, url, download = False, process=False,retry_on_error=True)
-        ent, pos = await self.add(info['webpage_url'], author, channel, info['title'], info['duration'], 'None',
+        ent, pos = self.add(info['webpage_url'], author, channel, info['title'], info['duration'], 'None',
                                   info['thumbnails'][0]['url'], info['is_live'])
         return ent, pos
 
