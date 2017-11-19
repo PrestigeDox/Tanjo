@@ -3,7 +3,7 @@ class MusicEntry:
     __slots__ = ['title', 'duration', 'url', 'author', 'channel',
                  'lock', 'effect', 'thumb', 'search_query', 'is_live', 'filename', 'status']
 
-    def __init__(self, title, duration, url, author, channel,
+    def __init__(self, url, author, channel, title, duration,
                  lock, effect, thumb, is_live, search_query=None):
         self.title = title
         self.duration = duration
@@ -18,3 +18,5 @@ class MusicEntry:
         self.status = None
         self.is_live = is_live
 
+    def __repr__(self):
+        return self.title, self.filename

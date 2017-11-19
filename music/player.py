@@ -140,7 +140,7 @@ class Player:
 
                     # The filename key isn't added unless an entry passes through this code, so if it doesn't exist, 
                     # download and add the key, this prevents downloading of any entry more than once
-                    if entry.filename is not None:
+                    if entry.filename is None:
 
                         entry.status = EntryState.PROCESSING
                         result = await self.bot.downloader.extract_info(self.bot.loop, entry.url, download=False)
@@ -206,7 +206,7 @@ class Player:
             with await now.lock:
                 print(str(now.is_live))
                 # If somehow because of some magical occurences, there's no filename before play is called
-                if not now.is_live and now.filename is not None:
+                if not now.is_live and now.filename is None:
                     print(now)
                     return
 
