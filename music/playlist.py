@@ -1,5 +1,6 @@
 import datetime
 
+from asyncio import Lock
 from collections import deque
 from itertools import islice
 from music.musicentry import MusicEntry
@@ -29,7 +30,7 @@ class Playlist:
             return "playing shortly!"
 
     def add(self, url, author, channel, title, duration, effect, thumb, live, search_query=None):
-        entry = MusicEntry(url, author, channel, title, duration, effect, thumb, live, search_query)
+        entry = MusicEntry(url, author, channel, title, duration, Lock(), effect, thumb, live, search_query)
         self.entries.append(entry)
         return entry, len(self.entries)
 
