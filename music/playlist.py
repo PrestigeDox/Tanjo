@@ -28,8 +28,8 @@ class Playlist:
         else:
             return "playing shortly!"
 
-    def add(self, *args, search_query=None):
-        entry = MusicEntry(*args, search_query)
+    def add(self, url, author, channel, title, duration, effect, thumb, live, search_query=None):
+        entry = MusicEntry(url, author, channel, title, duration, effect, thumb, live, search_query)
         self.entries.append(entry)
         return entry, len(self.entries)
 
