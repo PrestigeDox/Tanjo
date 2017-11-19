@@ -6,9 +6,9 @@ import discord
 from collections import defaultdict
 from datetime import timedelta
 from discord.ext import commands
-from utils.musicstate import MusicState
-from utils.player import Player
-from utils.ytsearch import ytsearch
+from music.musicstate import MusicState
+from music.player import Player
+from music.ytsearch import ytsearch
 
 
 class Music:
@@ -85,7 +85,7 @@ class Music:
                                                        info['title'], info['duration'], effect, info['thumbnail'],
                                                        info['is_live'])
                 await ctx.send("**%s** was added to the queue at position %s, %s" % (
-                    entry['title'], position, mplayer.playlist.estimate_time(position, mplayer)))
+                    entry.title, position, mplayer.playlist.estimate_time(position, mplayer)))
 
             # If it's a playlist
             elif 'list' in song_name:
@@ -135,7 +135,7 @@ class Music:
                                                            info['title'], info['duration'], effect, info['thumbnail'],
                                                            info['is_live'], song_name)
                 await ctx.send("**%s** was added to the queue at position %s, %s" % (
-                    entry['title'], position, mplayer.playlist.estimate_time(position, mplayer)))
+                    entry.title, position, mplayer.playlist.estimate_time(position, mplayer)))
 
             # Prepare the entry, music player, its time
             bot.loop.create_task(mplayer.prepare_entry(position - 1))
@@ -163,7 +163,7 @@ class Music:
         player = self.bot.players[ctx.message.guild]
         if not player.state == MusicState.STOPPED:
             ps = player.progress
-            pt = player.current_entry['duration']
+            pt = player.current_entry.duration
             # Bring the fraction of progress/duration to x/10, to use with progress bars
             filled_bars = round((ps * 10) / pt)
             pstr = str()
@@ -179,17 +179,17 @@ class Music:
             prog_str = pstr + '  %s / %s' % (song_progress, song_total)
 
             # Create Embed Response
-            np_embed = discord.Embed(title=player.current_entry['title'],
-                                     description='added by **%s**' % player.current_entry['author'].name,
-                                     url=player.current_entry['url'], colour=self.color)
+            np_embed = discord.Embed(title=player.current_entry.title,
+                                     description='added by **%s**' % player.current_entry.author.name,
+                                     url=player.current_entry.url, colour=self.color)
             np_embed.add_field(name='Autoplay', value='On' if player.autoplay else 'Off')
             np_embed.add_field(name='Equalizer', value=player.effects[player.EQ])
-            if not player.current_entry['is_live']:
+            if not player.current_entry.is_live:
                 np_embed.add_field(name='Progress', value=prog_str)
             else:
                 np_embed.add_field(name='Progress', value=(filled * 10) + f" {song_progress}/ Live :red_circle:")
-            np_embed.set_image(url=player.current_entry['thumb'])
-            np_embed.set_author(name='Now Playing', icon_url=player.current_entry['author'].avatar_url)
+            np_embed.set_image(url=player.current_entry.thumb)
+            np_embed.set_author(name='Now Playing', icon_url=player.current_entry.author.avatar_url)
 
             await ctx.send(embed=np_embed, delete_after=None)
         else:
@@ -209,7 +209,7 @@ class Music:
             nextline = '{}. {} added by {}\n'.format(i, item['title'], item['author'].name).strip()
             if item == player.current_entry:
                 ps = player.progress
-                pt = player.current_entry['duration']
+                pt = player.current_entry.duration
                 song_progress = str(timedelta(seconds=ps)).lstrip('0').lstrip(':')
                 song_total = str(timedelta(seconds=pt)).lstrip('0').lstrip(':')
                 prog_str = '[ %s / %s ]' % (song_progress, song_total)
@@ -362,10 +362,10 @@ class Music:
 
         player = self.bot.players[ctx.message.guild]
 
-        if player.current_entry['is_live']:
+        if player.current_entry.is_live:
             return await ctx.error("Can't seek on a livestream!")
 
-        duration = player.current_entry['duration']
+        duration = player.current_entry.duration
         timelist = seektime.split(':')
 
         if not len(timelist) == 3:
@@ -387,9 +387,9 @@ class Music:
         if not player.voice_client.is_playing():
             return await ctx.error("Nothing is playing to skip!")
         else:
-            if player.current_entry['author'] == ctx.message.author:
-                await ctx.send(f"**{player.current_entry['title']}**"
-                               f"was skipped by it's author, {player.current_entry['author']}!"
+            if player.current_entry.author == ctx.message.author:
+                await ctx.send(f"**{player.current_entry.title}**"
+                               f"was skipped by it's author, {player.current_entry.author}!"
                                )
                 player.voice_client.stop()
             else:
@@ -404,11 +404,11 @@ class Music:
                         "skip votes recieved, song will be skipped upon meeting requirements")
                     if current_votes >= required_votes:
                         await ctx.send(
-                            f"**{player.current_entry['title']}** was skipped upon meeting skip vote requirements!")
+                            f"**{player.current_entry.title}** was skipped upon meeting skip vote requirements!")
                         player.voice_client.stop()
                     else:
                         await ctx.send(
-                            f"You have already voted to skip **{player.current_entry['title']}**,"
+                            f"You have already voted to skip **{player.current_entry.title}**,"
                             "wait till more votes arrive!"
                             )
 
@@ -438,11 +438,11 @@ class Music:
         else:
             if player.repeat:
                 player.repeat = 0
-                await ctx.send(f":negative_squared_cross_mark: **{player.current_entry['title']}**,"
+                await ctx.send(f":negative_squared_cross_mark: **{player.current_entry.title}**,"
                                "has been taken off repeat.")
             else:
                 player.repeat = 1
-                await ctx.send(f":arrows_counterclockwise: **{player.current_entry['title']}**, has been set to repeat,"
+                await ctx.send(f":arrows_counterclockwise: **{player.current_entry.title}**, has been set to repeat,"
                                "till the end of time itself!\nUse this command again to interrupt the repetition."
                                )
 
