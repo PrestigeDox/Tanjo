@@ -203,21 +203,21 @@ class Player:
         #await self.lock.acquire()
         with await self.lock:
             now = self.playlist.entries[self.index]
-            with await now['lock']:
-                print(str(now['is_live']))
+            with await now.lock:
+                print(str(now.is_live))
                 # If somehow because of some magical occurences, there's no filename before play is called
-                if not now['is_live'] and 'filename' not in now.keys():
+                if not now.is_live and now.filename is not None:
                     print(now)
                     return
 
                 self.state = MusicState.PLAYING
 
-                if now['effect'] == 'None':
+                if now.effect == 'None':
                     addon = ""
-                elif now['effect'] == 'rape':
+                elif now.effect == 'rape':
                     addon = ""
                     volumestr = ' -filter:a "volume=+36dB"'
-                elif now['effect'] == 'c':
+                elif now.effect == 'c':
                     addon = ' -af pan="stereo|c0=c0|c1=-1*c1" -ac 1'
 
                 # The biggest problem for me in d.py rewrite, it has no encoder_options that let me set 
@@ -225,23 +225,23 @@ class Player:
                 # this now processes a karoke_filename after processing the cancellation and it is saved
                 # as a mono track, later when its loaded up into an AudioSource and played, the layout
                 # is guessed as mono and Voila! Karaoke
-                elif now['effect'] == 'k':
+                elif now.effect == 'k':
                     addon = ""
                     onlyfiles = [f for f in listdir(self.bot.downloader.download_folder) if isfile(join(self.bot.downloader.download_folder, f))]
-                    if not 'karaoke_' + now['filename'].split(self.slash)[1] in onlyfiles:
-                        procm = await now['channel'].send("Processing karaoke! :microphone:")
+                    if not 'karaoke_' + now.filename.split(self.slash)[1] in onlyfiles:
+                        procm = await now.channel.send("Processing karaoke! :microphone:")
                         p1 = subprocess.Popen(
-                            ['ffmpeg', '-i', now['filename'], '-af', 'pan=stereo|c0=c0|c1=-1*c1', '-ac', '1',
-                             now['filename'].split(self.slash)[0] + self.slash + 'karaoke_' +
-                             now['filename'].split(self.slash)[1].split('.')[0] + '.wav'])
+                            ['ffmpeg', '-i', now.filename, '-af', 'pan=stereo|c0=c0|c1=-1*c1', '-ac', '1',
+                             now.filename.split(self.slash)[0] + self.slash + 'karaoke_' +
+                             now.filename.split(self.slash)[1].split('.')[0] + '.wav'])
                         p1.wait()
                         procm.edit(content="Done! :white_check_mark:")
-                    now['filename'] = now['filename'].split(self.slash)[0] + self.slash + 'karaoke_' + \
-                        now['filename'].split(self.slash)[1].split('.')[0] + '.wav'
+                    now.filename = now.filename.split(self.slash)[0] + self.slash + 'karaoke_' + \
+                        now.filename.split(self.slash)[1].split('.')[0] + '.wav'
 
-                if not now['is_live']:
+                if not now.is_live:
                     ytdl_player = discord.FFmpegPCMAudio(
-                        now['filename'],
+                        now.filename,
                         before_options="-nostdin -ss %s" % seek,
                         options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
                 else:
@@ -249,7 +249,7 @@ class Player:
                     # So i've manually added a trailing CLRF here
                     # Also no -ss here, seeking doesn't work on livestreams
                     ytdl_player = discord.FFmpegPCMAudio(
-                        now['url'],
+                        now.url,
                         before_options="-nostdin -nostats -loglevel 0 "
                                        '-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'
                                        '(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'
@@ -360,7 +360,7 @@ class Player:
                 self.index += 1
             if self.jump_event.is_set():
                 self.jump_event.clear()
-            with await self.playlist.entries[self.index]['lock']:
+            with await self.playlist.entries[self.index].lock:
                 self.bot.loop.create_task(self.prepare_entry(self.index))
 
         elif self.repeat:
