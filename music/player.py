@@ -35,6 +35,7 @@ class Player:
         self.playlist = Playlist(bot)
         self.current_player = None
         self.current_entry = None
+        self.current_livestream = None
         self.start_time = None
         self.skip_votes = []
         self.lock = asyncio.Lock()
@@ -248,13 +249,16 @@ class Player:
                     # The mess here fixes an FFMpeg heck up, they don't send trailing CLRFs with their http requests
                     # So i've manually added a trailing CLRF here
                     # Also no -ss here, seeking doesn't work on livestreams
+                    livestreamer = subprocess.Popen(["livestreamer", "-O", now.url, "360p"], stdout=subprocess.PIPE)
+                    self.current_livestream = livestreamer
+                    # '-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'
+                    # '(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'
+                    # "$'\r\n'" + '''"X-Forwarded-For: 0.0.0.0"''' + "$'\r\n'"
                     ytdl_player = discord.FFmpegPCMAudio(
-                        now.url,
-                        before_options="--hls-segment-threads 10 -nostdin -nostats -loglevel 0 "
-                                       '-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'
-                                       '(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'
-                                       "$'\r\n'"+'''"X-Forwarded-For: 0.0.0.0"'''+"$'\r\n'",
-                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
+                        livestreamer.stdout,
+                        before_options="-nostdin -nostats -loglevel 0 ",
+                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
+                        pipe=True)
 
                 # So it might seem like you can only set Equalizer and Volume once,
                 # the code below facilitates changes at runtime all thanks to FFmpeg,
@@ -346,6 +350,10 @@ class Player:
 
             if self.seek_event.is_set():
                 self.seek_event.clear()
+
+            if self.current_livestream is not None:
+                self.current_livestream.close()
+                self.current_livestream = None
             return
         self.bot.loop.create_task(self.real_next())
 
