@@ -113,8 +113,7 @@ class Player:
 
         with await self.download_lock:
 
-            entry = self.playlist.entries[ind]
-            if not self.repeat and not entry.is_live:
+            if not self.repeat:
                 if ind is None:
                     if self.state in [MusicState.STOPPED, MusicState.SWITCHING]:
                         if self.current_player is not None and self.voice_client.is_playing():
@@ -124,6 +123,7 @@ class Player:
                         self.bot.loop.create_task(self.play())
                         return
 
+                entry = self.playlist.entries[ind]
                 with await entry.lock:
 
                     if entry.status is not None:
@@ -249,7 +249,7 @@ class Player:
                     # The mess here fixes an FFMpeg heck up, they don't send trailing CLRFs with their http requests
                     # So i've manually added a trailing CLRF here
                     # Also no -ss here, seeking doesn't work on livestreams
-                    livestreamer = subprocess.Popen(["livestreamer", "-O", now.url, "360p"], stdout=subprocess.PIPE)
+                    livestreamer = subprocess.Popen(["livestreamer", "-Q", "-O", now.url, "360p"], stdout=subprocess.PIPE)
                     self.current_livestream = livestreamer
                     # '-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'
                     # '(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'

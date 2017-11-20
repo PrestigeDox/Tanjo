@@ -77,11 +77,8 @@ class Music:
             if 'watch?' in song_name:
                 info = await bot.downloader.extract_info(bot.loop, song_name, download=False, process=False,
                                                          retry_on_error=True)
-                if info['is_live']:
-                    url = [x['url'] for x in info['formats'] if x['height'] == 360][0]
-                else:
-                    url = info['webpage_url']
-                entry, position = mplayer.playlist.add(url, message.author, message.channel,
+
+                entry, position = mplayer.playlist.add(info['webpage_url'], message.author, message.channel,
                                                        info['title'], info['duration'], effect, info['thumbnail'],
                                                        info['is_live'])
                 await ctx.send("**%s** was added to the queue at position %s, %s" % (
@@ -110,12 +107,8 @@ class Music:
                 if not searchmode:
                     info = await bot.downloader.extract_info(bot.loop, 'ytsearch1:'+song_name, download=False,
                                                              process=True, retry_on_error=True)
-                    if info['entries'][0]['is_live']:
-                        url = [x['url'] for x in info['entries'][0]['formats'] if x['height'] == 360][0]
-                    else:
-                        url = info['entries'][0]['webpage_url']
 
-                    entry, position = mplayer.playlist.add(url, message.author,
+                    entry, position = mplayer.playlist.add(info['entries'][0]['webpage_url'], message.author,
                                                            message.channel, info['entries'][0]['title'],
                                                            info['entries'][0]['duration'], effect,
                                                            info['entries'][0]['thumbnails'][0]['url'],
@@ -126,12 +119,7 @@ class Music:
                     info = await bot.downloader.extract_info(bot.loop, song[1], download=False, process=False,
                                                              retry_on_error=True)
 
-                    if info['is_live']:
-                        url = [x['url'] for x in info['formats'] if x['height'] == 360][0]
-                    else:
-                        url = info['webpage_url']
-
-                    entry, position = mplayer.playlist.add(url, message.author, message.channel,
+                    entry, position = mplayer.playlist.add(info['webpage_url'], message.author, message.channel,
                                                            info['title'], info['duration'], effect, info['thumbnail'],
                                                            info['is_live'], song_name)
                 await ctx.send("**%s** was added to the queue at position %s, %s" % (
