@@ -1,13 +1,14 @@
 class MusicEntry:
 
-    __slots__ = ['title', 'duration', 'url', 'author', 'channel',
+    __slots__ = ['title', 'duration', 'url','webpage_url', 'author', 'channel',
                  'lock', 'effect', 'thumb', 'search_query', 'is_live', 'filename', 'status']
 
-    def __init__(self, url, author, channel, title, duration,
+    def __init__(self, url, webpage_url, author, channel, title, duration,
                  lock, effect, thumb, is_live, search_query=None):
         self.title = title
         self.duration = duration
         self.url = url
+        self.webpage_url = webpage_url
         self.author = author
         self.channel = channel
         self.lock = lock

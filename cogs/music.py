@@ -77,8 +77,12 @@ class Music:
             if 'watch?' in song_name:
                 info = await bot.downloader.extract_info(bot.loop, song_name, download=False, process=False,
                                                          retry_on_error=True)
+                if info['is_live']:
+                    url = info['webpage_url']
+                else:
+                    url = info['url']
 
-                entry, position = mplayer.playlist.add(info['webpage_url'], message.author, message.channel,
+                entry, position = mplayer.playlist.add(url, info['webpage_url'], message.author, message.channel,
                                                        info['title'], info['duration'], effect, info['thumbnail'],
                                                        info['is_live'])
                 await ctx.send("**%s** was added to the queue at position %s, %s" % (
@@ -107,8 +111,11 @@ class Music:
                 if not searchmode:
                     info = await bot.downloader.extract_info(bot.loop, 'ytsearch1:'+song_name, download=False,
                                                              process=True, retry_on_error=True)
-
-                    entry, position = mplayer.playlist.add(info['entries'][0]['webpage_url'], message.author,
+                    if info['entries'][0]['is_live']:
+                        url = info['entries'][0]['webpage_url']
+                    else:
+                        url = info['entries'][0]['url']
+                    entry, position = mplayer.playlist.add(url,info['entries'][0]['webpage_url'], message.author,
                                                            message.channel, info['entries'][0]['title'],
                                                            info['entries'][0]['duration'], effect,
                                                            info['entries'][0]['thumbnails'][0]['url'],
@@ -118,15 +125,19 @@ class Music:
                     song = await ytsearch(bot, message, song_name)
                     info = await bot.downloader.extract_info(bot.loop, song[1], download=False, process=False,
                                                              retry_on_error=True)
+                    if info['is_live']:
+                        url = info['webpage_url']
+                    else:
+                        url = info['url']
 
-                    entry, position = mplayer.playlist.add(info['webpage_url'], message.author, message.channel,
+                    entry, position = mplayer.playlist.add(url, info['webpage_url'], message.author, message.channel,
                                                            info['title'], info['duration'], effect, info['thumbnail'],
                                                            info['is_live'], song_name)
                 await ctx.send("**%s** was added to the queue at position %s, %s" % (
                     entry.title, position, mplayer.playlist.estimate_time(position, mplayer)))
 
             # Prepare the entry, music player, its time
-            bot.loop.create_task(mplayer.prepare_entry(position - 1))
+            bot.loop.create_task(mplayer.play())
 
     @commands.group(invoke_without_command=True)
     async def play(self, ctx, *, song_name):
@@ -169,7 +180,7 @@ class Music:
             # Create Embed Response
             np_embed = discord.Embed(title=player.current_entry.title,
                                      description='added by **%s**' % player.current_entry.author.name,
-                                     url=player.current_entry.url, colour=self.color)
+                                     url=player.current_entry.webpage_url, colour=self.color)
             np_embed.add_field(name='Autoplay', value='On' if player.autoplay else 'Off')
             np_embed.add_field(name='Equalizer', value=player.effects[player.EQ])
             if not player.current_entry.is_live:
@@ -312,7 +323,7 @@ class Music:
 
         player.index = pickno - 1
         if not player.voice_client.is_playing() and not player.state == MusicState.PAUSED:
-            self.bot.loop.create_task(player.prepare_entry())
+            self.bot.loop.create_task(player.play())
             await ctx.send(f"Jumping to **{pickno}**!")
         else:
             player.jump_event.set()
@@ -364,8 +375,7 @@ class Music:
             return await ctx.error(f"Value can only be between 00:00:00 and {str(timedelta(seconds=duration))}")
 
         player.seek_event.set()
-        player.voice_client.stop()
-        self.bot.loop.create_task(player.play(seektime, seek_seconds))
+        player.reset(seektime, seek_seconds)
         await ctx.send(f"Seeking to {seektime}")
     
     @commands.command()

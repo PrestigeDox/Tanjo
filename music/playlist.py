@@ -29,15 +29,16 @@ class Playlist:
         else:
             return "playing shortly!"
 
-    def add(self, url, author, channel, title, duration, effect, thumb, live, search_query=None):
-        entry = MusicEntry(url, author, channel, title, duration, Lock(), effect, thumb, live, search_query)
+    def add(self, url, webpage_url, author, channel, title, duration, effect, thumb, live, search_query=None):
+        entry = MusicEntry(url, webpage_url, author, channel, title, duration,
+                           Lock(), effect, thumb, live, search_query)
         self.entries.append(entry)
         return entry, len(self.entries)
 
     async def _add_pl_entry(self, url, author, channel):
         info = await self.bot.downloader.extract_info(self.bot.loop, url, download=False, process=False, retry_on_error=True)
-        ent, pos = self.add(info['webpage_url'], author, channel, info['title'], info['duration'], 'None',
-                            info['thumbnails'][0]['url'], info['is_live'])
+        ent, pos = self.add(info['webpage_url'], info['webpage_url'], author, channel, info['title'], info['duration'],
+                            'None', info['thumbnails'][0]['url'], info['is_live'])
         return ent, pos
 
     # This handles each entry in the youtube playlist, somewhat

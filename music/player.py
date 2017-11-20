@@ -35,7 +35,7 @@ class Player:
         self.playlist = Playlist(bot)
         self.current_player = None
         self.current_entry = None
-        self.current_livestream = None
+        self.current_process = None
         self.start_time = None
         self.skip_votes = []
         self.lock = asyncio.Lock()
@@ -84,12 +84,13 @@ class Player:
         self.effects = {'pop': 'Pop', 'classic': 'Classic', 'jazz': 'Jazz', 'rock': 'Rock', 'bb': 'Bass Boost',
                         'normal': 'Normal', 'vocals': 'Vocals', 'balanced': 'Balanced', 'easy': 'Easy Listening'}
 
-    async def reset(self, seektime=None):
+    async def reset(self, seektime=None, prog=None):
         """ Nasty function that makes a player that will play from exactly when it was stopped , this allows us to
         change effects on the fly """
 
         self.voice_client.stop()
-        prog = self.accu_progress
+        if prog is None:
+                prog = self.accu_progress
 
         if self.volume_event.is_set():
             await self.volume_event.wait()
@@ -100,92 +101,6 @@ class Player:
             seektime = datetime.datetime.utcfromtimestamp(prog)
 
         self.bot.loop.create_task(self.play(str(seektime.strftime('%H:%M:%S.%f')), prog))
-
-    async def prepare_entry(self, ind=None):
-        """
-        Download/Prepare/Play entries while maintaining sync between the queue,
-        a lock is requested before adding play to the loop, so that in
-        no case will the voice client be requested to play two AudioSources
-        at once. 'ind' is the index of the entry to be prepared/played
-        """
-        if self.state == MusicState.DEAD:
-            return
-
-        with await self.download_lock:
-
-            test_entry = self.playlist.entries[self.index]
-            if not self.repeat and not test_entry.is_live:
-                if ind is None:
-                    if self.state in [MusicState.STOPPED, MusicState.SWITCHING]:
-                        if self.current_player is not None and self.voice_client.is_playing():
-                            return
-
-                    with await self.lock:
-                        self.bot.loop.create_task(self.play())
-                        return
-
-                entry = self.playlist.entries[ind]
-                with await entry.lock:
-
-                    # if entry.status is not None:
-                    #
-                    #     # If an entry is currently being downloaded, the status is 'processing', so we don't bother
-                    #     # with it and return
-                    #     if entry.status == EntryState.PROCESSING:
-                    #         return
-                    #     elif entry.status == EntryState.DOWNLOADED:
-                    #         with await self.lock:
-                    #             self.bot.loop.create_task(self.play())
-                    #             return
-                    #     else:
-                    #         pass
-
-                    # The filename key isn't added unless an entry passes through this code, so if it doesn't exist, 
-                    # download and add the key, this prevents downloading of any entry more than once
-                    # if entry.filename is None:
-                    #
-                    #     entry.status = EntryState.PROCESSING
-                    #     result = await self.bot.downloader.extract_info(self.bot.loop, entry.url, download=False)
-                    #     entry.status = EntryState.DOWNLOADED
-                    #     fn = self.bot.downloader.ytdl.prepare_filename(result)
-                    #     onlyfiles = [f for f in listdir(self.bot.downloader.download_folder)
-                    #                  if isfile(join(self.bot.downloader.download_folder, f))]
-                    #
-                    #     # Check if this has been previously downloaded, why waste bandwidth
-                    #     if not fn.split(self.bot.downloader.download_folder + self.slash)[1] in onlyfiles:
-                    #         x = await entry.channel.send("Caching **%s** :arrow_double_down:" % entry.title,
-                    #                                      delete_after=None)
-                    #
-                    #         try:
-                    #             await self.bot.downloader.extract_info(self.bot.loop, entry.url, download=True)
-                    #
-                    #         # If caching does error out, go to a previous index position
-                    #         except:
-                    #             await x.edit(":negative_squared_cross_mark: Error caching **%s**" % entry.title)
-                    #             self.playlist.entries.remove(entry)
-                    #             return
-                    #         await x.edit(content="Done :white_check_mark:", delete_after=2.0)
-                    #
-                    #     entry.filename = fn
-
-                    # This has some leftover part from async, but basically, only if we're stopped or
-                    # switching tracks, latter being the only reason we are in prepare_entry through 
-                    # the player, also makes sure to keep the queue in sync by requesting for player's
-                    # lock before queueing play to the loop
-                    try:
-                        if self.state in [MusicState.STOPPED, MusicState.SWITCHING] and not self.voice_client.is_playing():
-                            print('\nwas stopped\n')
-                            self.bot.loop.create_task(self.play())
-                        else:
-                            return
-                    except AttributeError:
-                        if not self.voice_client.is_playing():
-                            self.bot.loop.create_task(self.play())
-
-            # We'll be here only when repeat is set to True, just skip everything and queue the same song
-            else:
-                with await self.lock:
-                    self.bot.loop.create_task(self.play())
 
     async def play(self, seek="00:00:00", seeksec=0):
         """
@@ -206,21 +121,10 @@ class Player:
         with await self.lock:
             now = self.playlist.entries[self.index]
             with await now.lock:
-                print(str(now.is_live))
-                # If somehow because of some magical occurences, there's no filename before play is called
-                # if not now.is_live and now.filename is None:
-                #     print(now)
-                #     return
-
                 self.state = MusicState.PLAYING
 
                 if now.effect == 'None':
                     addon = ""
-                elif now.effect == 'rape':
-                    addon = ""
-                    volumestr = ' -filter:a "volume=+36dB"'
-                elif now.effect == 'c':
-                    addon = ' -af pan="stereo|c0=c0|c1=-1*c1" -ac 1'
 
                 # The biggest problem for me in d.py rewrite, it has no encoder_options that let me set 
                 # output channels to 1, allowing this phase cancellation karaoke to work, to remedy this,
@@ -242,26 +146,26 @@ class Player:
                         now.filename.split(self.slash)[1].split('.')[0] + '.wav'
 
                 if not now.is_live:
-                    stream_process = subprocess.Popen(["youtube-dl", now.url, "-f", "bestaudio/best", "-o", "-"], stdout=subprocess.PIPE)
-                    self.current_livestream = stream_process
+                    # Have youtube-dl handle downloading rather than ffmpeg , again cause ffmpeg is just bad at it
+                    stream_process = subprocess.Popen(["youtube-dl", now.url, "--quiet", "--no-warnings",
+                                                       "--no-check-certificate", "-f", "bestaudio/best", "-o", "-"],
+                                                      stdout=subprocess.PIPE)
+                    self.current_process = stream_process
                     ytdl_player = discord.FFmpegPCMAudio(
                         stream_process.stdout,
                         before_options="-nostdin -ss %s" % seek,
-                        options="-acodec mp3 -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
+                        options="-acodec pcm_s16le -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
                         pipe=True)
                 else:
-                    # The mess here fixes an FFMpeg heck up, they don't send trailing CLRFs with their http requests
-                    # So i've manually added a trailing CLRF here
                     # Also no -ss here, seeking doesn't work on livestreams
+                    # Handle downloading through livestreamer for multithreaded downloading, manual pipe to source
                     livestreamer = subprocess.Popen(["livestreamer", "-Q", "-O", now.url, "360p"], stdout=subprocess.PIPE)
-                    self.current_livestream = livestreamer
-                    # '-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'
-                    # '(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'
-                    # "$'\r\n'" + '''"X-Forwarded-For: 0.0.0.0"''' + "$'\r\n'"
+                    self.current_process = livestreamer
+
                     ytdl_player = discord.FFmpegPCMAudio(
                         livestreamer.stdout,
                         before_options="-nostdin -nostats -loglevel 0 ",
-                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
+                        options="-acodec pcm_s16le -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
                         pipe=True)
 
                 # So it might seem like you can only set Equalizer and Volume once,
@@ -306,7 +210,7 @@ class Player:
         prog_str = '%s' % song_total
         np_embed = discord.Embed(title=self.current_entry.title,
                                  description='added by **%s**' % self.current_entry.author.name,
-                                 url=self.current_entry.url, colour=0xffffff)
+                                 url=self.current_entry.webpage_url, colour=0xffffff)
         if not self.current_entry.is_live:
             np_embed.add_field(name='Duration', value=prog_str)
         np_embed.add_field(name='Autoplay', value='On' if self.autoplay else 'Off')
@@ -355,9 +259,9 @@ class Player:
             if self.seek_event.is_set():
                 self.seek_event.clear()
 
-            if self.current_livestream is not None:
-                self.current_livestream.stdout.close()
-                self.current_livestream = None
+            if self.current_process is not None:
+                self.current_process.stdout.close()
+                self.current_process = None
             return
         self.bot.loop.create_task(self.real_next())
 
@@ -373,10 +277,10 @@ class Player:
             if self.jump_event.is_set():
                 self.jump_event.clear()
             with await self.playlist.entries[self.index].lock:
-                self.bot.loop.create_task(self.prepare_entry(self.index))
+                self.bot.loop.create_task(self.play())
 
         elif self.repeat:
-            self.bot.loop.create_task(self.prepare_entry(self.index))
+            self.bot.loop.create_task(self.play())
 
         elif self.autoplay:
             if not self.repeat:
@@ -436,7 +340,7 @@ class Player:
             await asyncio.sleep(7)
             await ap_msg.delete()
 
-        await self.prepare_entry(position - 1)
+        await self.play()
 
     # Some redundant stuff below here, accu_progress is only used by
     # effects that need to keep exact track of time, checks if we're paused
