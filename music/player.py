@@ -127,46 +127,46 @@ class Player:
                 entry = self.playlist.entries[ind]
                 with await entry.lock:
 
-                    if entry.status is not None:
-
-                        # If an entry is currently being downloaded, the status is 'processing', so we don't bother
-                        # with it and return
-                        if entry.status == EntryState.PROCESSING:
-                            return
-                        elif entry.status == EntryState.DOWNLOADED:
-                            with await self.lock:
-                                self.bot.loop.create_task(self.play())
-                                return
-                        else:
-                            pass
+                    # if entry.status is not None:
+                    #
+                    #     # If an entry is currently being downloaded, the status is 'processing', so we don't bother
+                    #     # with it and return
+                    #     if entry.status == EntryState.PROCESSING:
+                    #         return
+                    #     elif entry.status == EntryState.DOWNLOADED:
+                    #         with await self.lock:
+                    #             self.bot.loop.create_task(self.play())
+                    #             return
+                    #     else:
+                    #         pass
 
                     # The filename key isn't added unless an entry passes through this code, so if it doesn't exist, 
                     # download and add the key, this prevents downloading of any entry more than once
-                    if entry.filename is None:
-
-                        entry.status = EntryState.PROCESSING
-                        result = await self.bot.downloader.extract_info(self.bot.loop, entry.url, download=False)
-                        entry.status = EntryState.DOWNLOADED
-                        fn = self.bot.downloader.ytdl.prepare_filename(result)
-                        onlyfiles = [f for f in listdir(self.bot.downloader.download_folder)
-                                     if isfile(join(self.bot.downloader.download_folder, f))]
-
-                        # Check if this has been previously downloaded, why waste bandwidth
-                        if not fn.split(self.bot.downloader.download_folder + self.slash)[1] in onlyfiles:
-                            x = await entry.channel.send("Caching **%s** :arrow_double_down:" % entry.title,
-                                                         delete_after=None)
-
-                            try:
-                                await self.bot.downloader.extract_info(self.bot.loop, entry.url, download=True)
-
-                            # If caching does error out, go to a previous index position
-                            except:
-                                await x.edit(":negative_squared_cross_mark: Error caching **%s**" % entry.title)
-                                self.playlist.entries.remove(entry)
-                                return
-                            await x.edit(content="Done :white_check_mark:", delete_after=2.0)
-
-                        entry.filename = fn
+                    # if entry.filename is None:
+                    #
+                    #     entry.status = EntryState.PROCESSING
+                    #     result = await self.bot.downloader.extract_info(self.bot.loop, entry.url, download=False)
+                    #     entry.status = EntryState.DOWNLOADED
+                    #     fn = self.bot.downloader.ytdl.prepare_filename(result)
+                    #     onlyfiles = [f for f in listdir(self.bot.downloader.download_folder)
+                    #                  if isfile(join(self.bot.downloader.download_folder, f))]
+                    #
+                    #     # Check if this has been previously downloaded, why waste bandwidth
+                    #     if not fn.split(self.bot.downloader.download_folder + self.slash)[1] in onlyfiles:
+                    #         x = await entry.channel.send("Caching **%s** :arrow_double_down:" % entry.title,
+                    #                                      delete_after=None)
+                    #
+                    #         try:
+                    #             await self.bot.downloader.extract_info(self.bot.loop, entry.url, download=True)
+                    #
+                    #         # If caching does error out, go to a previous index position
+                    #         except:
+                    #             await x.edit(":negative_squared_cross_mark: Error caching **%s**" % entry.title)
+                    #             self.playlist.entries.remove(entry)
+                    #             return
+                    #         await x.edit(content="Done :white_check_mark:", delete_after=2.0)
+                    #
+                    #     entry.filename = fn
 
                     # This has some leftover part from async, but basically, only if we're stopped or
                     # switching tracks, latter being the only reason we are in prepare_entry through 
@@ -208,9 +208,9 @@ class Player:
             with await now.lock:
                 print(str(now.is_live))
                 # If somehow because of some magical occurences, there's no filename before play is called
-                if not now.is_live and now.filename is None:
-                    print(now)
-                    return
+                # if not now.is_live and now.filename is None:
+                #     print(now)
+                #     return
 
                 self.state = MusicState.PLAYING
 
@@ -242,10 +242,13 @@ class Player:
                         now.filename.split(self.slash)[1].split('.')[0] + '.wav'
 
                 if not now.is_live:
+                    stream_process = subprocess.Popen(["youtube-dl", now.url, "-f", "bestaudio" "-o", "-"], stdout=subprocess.PIPE)
+                    self.current_livestream = stream_process
                     ytdl_player = discord.FFmpegPCMAudio(
-                        now.filename,
+                        stream_process.stdout,
                         before_options="-nostdin -ss %s" % seek,
-                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
+                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
+                        pipe=True)
                 else:
                     # The mess here fixes an FFMpeg heck up, they don't send trailing CLRFs with their http requests
                     # So i've manually added a trailing CLRF here
@@ -353,7 +356,7 @@ class Player:
                 self.seek_event.clear()
 
             if self.current_livestream is not None:
-                self.current_livestream.close()
+                self.current_livestream.stdout.close()
                 self.current_livestream = None
             return
         self.bot.loop.create_task(self.real_next())
