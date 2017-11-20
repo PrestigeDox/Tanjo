@@ -250,11 +250,11 @@ class Player:
                     # Also no -ss here, seeking doesn't work on livestreams
                     ytdl_player = discord.FFmpegPCMAudio(
                         now.url,
-                        before_options="-nostdin -nostats -loglevel 0 "
+                        before_options="--demuxer-readahead-secs=5 -nostdin -nostats -loglevel 0 "
                                        '-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'
                                        '(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'
                                        "$'\r\n'"+'''"X-Forwarded-For: 0.0.0.0"'''+"$'\r\n'",
-                        options="--demuxer-readahead-secs=5 -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
+                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ])
 
                 # So it might seem like you can only set Equalizer and Volume once,
                 # the code below facilitates changes at runtime all thanks to FFmpeg,
