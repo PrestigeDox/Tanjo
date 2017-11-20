@@ -242,7 +242,7 @@ class Player:
                         now.filename.split(self.slash)[1].split('.')[0] + '.wav'
 
                 if not now.is_live:
-                    stream_process = subprocess.Popen(["youtube-dl", now.url, "-f", "bestaudio" "-o", "-"], stdout=subprocess.PIPE)
+                    stream_process = subprocess.Popen(["youtube-dl", now.url, "-f", "bestaudio/best", "-o", "-"], stdout=subprocess.PIPE)
                     self.current_livestream = stream_process
                     ytdl_player = discord.FFmpegPCMAudio(
                         stream_process.stdout,
