@@ -113,7 +113,8 @@ class Player:
 
         with await self.download_lock:
 
-            if not self.repeat:
+            test_entry = self.playlist.entries[self.index]
+            if not self.repeat and not test_entry.is_live:
                 if ind is None:
                     if self.state in [MusicState.STOPPED, MusicState.SWITCHING]:
                         if self.current_player is not None and self.voice_client.is_playing():
