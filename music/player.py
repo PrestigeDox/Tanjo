@@ -250,7 +250,7 @@ class Player:
                     # Also no -ss here, seeking doesn't work on livestreams
                     ytdl_player = discord.FFmpegPCMAudio(
                         now.url,
-                        before_options="--demuxer-readahead-secs=5 -nostdin -nostats -loglevel 0 "
+                        before_options="--hls-segment-threads 10 -nostdin -nostats -loglevel 0 "
                                        '-headers "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/534.24'
                                        '(KHTML, like Gecko) Chrome/11.0.696.3 Safari/534.24"'
                                        "$'\r\n'"+'''"X-Forwarded-For: 0.0.0.0"'''+"$'\r\n'",
