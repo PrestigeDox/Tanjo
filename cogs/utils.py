@@ -19,11 +19,8 @@ class Utilities:
     def __init__(self, bot):
         self.bot = bot
         self.nsp = NumericStringParserForPython3()
-        textmoji_strs = '\u200B🅰\u200B🅱\u200B🇨\u200B🇩\u200B🇪\u200B🇫\u200B🇬' \
-                        '\u200B🇭\u200B🇮\u200B🇯\u200B🇰\u200B🇱\u200B🇲\u200B🇳' \
-                        '\u200B🅾\u200B🅿\u200B🇶\u200B🇷\u200B🇸\u200B🇹\u200B🇺' \
-                        '\u200B🇻\u200B🇼\u200B🇽\u200B🇾\u200B🇿'
-        self.textmoji_table = dict((ord(char), trans) for char, trans in zip(string.ascii_letters, textmoji_strs))
+        textmoji_strs = '🅰🅱🇨🇩🇪🇫🇬🇭🇮🇯🇰🇱🇲🇳🅾🅿🇶🇷🇸🇹🇺🇻🇼🇽🇾🇿'
+        self.textmoji_table = dict((ord(char), trans) for char, trans in zip(string.ascii_lowercase, textmoji_strs))
         dev_server = discord.utils.find(lambda s: s.id == 365893884053553162, bot.guilds)
         self.feedback_channel = dev_server.get_channel(365893884053553162)
         self.guessed_wrong = [
