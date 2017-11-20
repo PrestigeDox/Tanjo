@@ -247,7 +247,7 @@ class Player:
                     ytdl_player = discord.FFmpegPCMAudio(
                         stream_process.stdout,
                         before_options="-nostdin -ss %s" % seek,
-                        options="-vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
+                        options="-acodec mp3 -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
                         pipe=True)
                 else:
                     # The mess here fixes an FFMpeg heck up, they don't send trailing CLRFs with their http requests
