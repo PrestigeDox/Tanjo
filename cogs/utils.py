@@ -24,7 +24,7 @@ class Utilities:
                         '\u200B🅾\u200B🅿\u200B🇶\u200B🇷\u200B🇸\u200B🇹\u200B🇺' \
                         '\u200B🇻\u200B🇼\u200B🇽\u200B🇾\u200B🇿'
         self.textmoji_table = dict((ord(char), trans) for char, trans in zip(string.ascii_letters, textmoji_strs))
-        dev_server = discord.utils.find(lambda s: s.id == 365893884053553162, bot.servers)
+        dev_server = discord.utils.find(lambda s: s.id == 365893884053553162, bot.guilds)
         self.feedback_channel = dev_server.get_channel(365893884053553162)
         self.guessed_wrong = [
                 'Not even close, the right number was:',
@@ -82,7 +82,7 @@ class Utilities:
         a = ctx.message.author.display_name
         b = self.bot.user.name
 
-        available = RPSLS.rock, RPSLS.paper, RPSLS.scissors, RPSLS.lizard, RPSLS.spock
+        available = self.RPSLS['rock'], self.RPSLS['paper'], self.RPSLS['scissors'], self.RPSLS['lizard'], self.RPSLS['spock']
         bot_choice = random.choice(available)
 
         # I know, this is a mess, but trust me, it works correctly
