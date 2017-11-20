@@ -6,7 +6,7 @@ async def ytsearch(bot, message, song_name):
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 '
                              '(KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'}
 
-    async with bot.aioses.get('https://youtube.com/results',
+    async with bot.session.get('https://youtube.com/results',
                                             headers=headers,
                                             params={'search_query': song_name.replace(' ', '+')}) as r:
         html = await r.text()
