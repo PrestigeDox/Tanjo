@@ -78,11 +78,13 @@ class Player:
                                   'equalizer=f=8000:width_type=h:w=100:g=3,equalizer=f=16000:width_type=h:w=100:g=3',
                           'bb': ' -af bass=g=8',
                           'vocals': ' -af compand=.3|.3:1|1:-90/-60|-60/-40|-40/-30|-20/-20:6:0:-90:0.2',
-                          'easy': ' -af earwax'
+                          'easy': ' -af earwax',
+                          'live': ' -af extrastereo'
                           }
 
         self.effects = {'pop': 'Pop', 'classic': 'Classic', 'jazz': 'Jazz', 'rock': 'Rock', 'bb': 'Bass Boost',
-                        'normal': 'Normal', 'vocals': 'Vocals', 'balanced': 'Balanced', 'easy': 'Easy Listening'}
+                        'normal': 'Normal', 'vocals': 'Vocals', 'balanced': 'Balanced', 'easy': 'Easy Listening',
+                        'live': 'Live'}
 
     async def reset(self, seektime=None, prog=None):
         """ Nasty function that makes a player that will play from exactly when it was stopped , this allows us to
@@ -109,7 +111,6 @@ class Player:
         'next' is provided as the functon to be called when
         the source is done playing
         """
-        print('lock', self.lock.locked())
         if self.state == MusicState.DEAD or self.voice_client.is_playing():
             return
 
@@ -117,7 +118,6 @@ class Player:
         volumestr = ' -filter:a "volume=%s"' % self.volume
 
         # This lock is the key to having only one entry being played at once
-        #await self.lock.acquire()
         with await self.lock:
             now = self.playlist.entries[self.index]
             with await now.lock:
@@ -127,16 +127,41 @@ class Player:
                     addon = ""
                     i_addon = ""
 
-                # The biggest problem for me in d.py rewrite, it has no encoder_options that let me set 
-                # output channels to 1, allowing this phase cancellation karaoke to work, to remedy this,
-                # this now processes a karoke_filename after processing the cancellation and it is saved
-                # as a mono track, later when its loaded up into an AudioSource and played, the layout
-                # is guessed as mono and Voila! Karaoke
-                elif now.effect == 'k':
-                    i_addon = "-guess_layout_max 1"
-                    addon = ' -af pan="stereo|c0=c0|c1=-1*c1" -ac 1'
+                # If karaoke mode
+                if now.effect == 'k':
+                    # Youtube-DL pipes download to ffmpeg#1, ffmpeg #1 outputs data with phase cancellation
+                    # and in opus format to pipe, this is piped into our normal FFmpegPCMAudio
+                    # Why not just use the -af filter and output one channel in the main ffmpeg?
+                    # d.py has channels set to 2 as default on player/voice_client, so from ffmpeg#1
+                    # data goes out as one channel, now this is interpreted as two channels and split equally
+                    # by ffmpeg#2, if this method isnt used, a phase cancellation will occur, but with a tempo
+                    # and pitch increase
 
-                if not now.is_live:
+                    # if karaoke was asked for on a livestream, not sure why but uhm its just here
+                    if now.is_live:
+                        stream_process = subprocess.Popen(["livestreamer", "-Q", "-O", now.url, "360p"],
+                                                          stdout=subprocess.PIPE
+                                                          )
+                    # Normal karaoke, no live
+                    else:
+                        stream_process = subprocess.Popen(["youtube-dl", now.url, "--quiet", "--no-warnings",
+                                                          "--no-check-certificate", "-f", "bestaudio/best", "-o", "-"],
+                                                          stdout=subprocess.PIPE
+                                                          )
+
+                    ff2_process = subprocess.Popen(['ffmpeg', '-i', '-', '-nostdin', '-f', 'opus', '-af',
+                                                   'pan=stereo|c0=c0|c1=-1*c1', '-ac', '1', '-'],
+                                                   stdout=subprocess.PIPE, stdin=stream_process.stdout
+                                                   )
+                    self.current_process = ff2_process
+                    ytdl_player = discord.FFmpegPCMAudio(
+                        ff2_process.stdout,
+                        before_options=f"-nostdin{' -ss '+seek if seek is not None else ''}",
+                        options="-acodec pcm_s16le" + volumestr + self.EQEffects[self.EQ],
+                        pipe=True)
+
+                # Normal track no live
+                elif not now.is_live:
                     # Have youtube-dl handle downloading rather than ffmpeg , again cause ffmpeg is just bad at it
                     stream_process = subprocess.Popen(["youtube-dl", now.url, "--quiet", "--no-warnings",
                                                        "--no-check-certificate", "-f", "bestaudio/best", "-o", "-"],
@@ -147,6 +172,8 @@ class Player:
                         before_options=f"-nostdin{' -ss '+seek if seek is not None else ''}",
                         options="-acodec pcm_s16le -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
                         pipe=True)
+
+                # Livestream
                 else:
                     # Also no -ss here, seeking doesn't work on livestreams
                     # Handle downloading through livestreamer for multithreaded downloading, manual pipe to source

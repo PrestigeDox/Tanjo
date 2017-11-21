@@ -202,7 +202,7 @@ class Music:
 
         player = self.bot.players[ctx.message.guild]
         printlines = defaultdict(list)
-        printlines[0].append(['```py'])
+        printlines[0].append('```py')
         current_page = 0
         for i, item in enumerate(player.playlist, 1):
             nextline = '{}. {} added by {}\n'.format(i, item.title, item.author.name).strip()
@@ -229,6 +229,7 @@ class Music:
             return await ctx.error('Empty queue! Queue something with `play`')
 
         if len(printlines.keys()) == 1:
+            print(printlines)
             await ctx.send('\n'.join(printlines[0]))
             return
 
