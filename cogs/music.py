@@ -205,7 +205,7 @@ class Music:
         printlines[0].append(['```py'])
         current_page = 0
         for i, item in enumerate(player.playlist, 1):
-            nextline = '{}. {} added by {}\n'.format(i, item['title'], item['author'].name).strip()
+            nextline = '{}. {} added by {}\n'.format(i, item.title, item.author.name).strip()
             if item == player.current_entry:
                 ps = player.progress
                 pt = player.current_entry.duration
@@ -337,7 +337,7 @@ class Music:
             return await ctx.error(f"Please provide a valid index number between 1 and {len(player.playlist.entries)}")
         track = player.playlist.get_track(index)
         player.playlist.remove(index)
-        await ctx.send(f"**{track['title']}** was removed from your playlist!")
+        await ctx.send(f"**{track.title}** was removed from your playlist!")
 
     @commands.command()
     async def pause(self, ctx):
