@@ -125,6 +125,7 @@ class Player:
 
                 if now.effect == 'None':
                     addon = ""
+                    i_addon = ""
 
                 # The biggest problem for me in d.py rewrite, it has no encoder_options that let me set 
                 # output channels to 1, allowing this phase cancellation karaoke to work, to remedy this,
@@ -132,18 +133,8 @@ class Player:
                 # as a mono track, later when its loaded up into an AudioSource and played, the layout
                 # is guessed as mono and Voila! Karaoke
                 elif now.effect == 'k':
-                    addon = ""
-                    onlyfiles = [f for f in listdir(self.bot.downloader.download_folder) if isfile(join(self.bot.downloader.download_folder, f))]
-                    if not 'karaoke_' + now.filename.split(self.slash)[1] in onlyfiles:
-                        procm = await now.channel.send("Processing karaoke! :microphone:")
-                        p1 = subprocess.Popen(
-                            ['ffmpeg', '-i', now.filename, '-af', 'pan=stereo|c0=c0|c1=-1*c1', '-ac', '1',
-                             now.filename.split(self.slash)[0] + self.slash + 'karaoke_' +
-                             now.filename.split(self.slash)[1].split('.')[0] + '.wav'])
-                        p1.wait()
-                        procm.edit(content="Done! :white_check_mark:")
-                    now.filename = now.filename.split(self.slash)[0] + self.slash + 'karaoke_' + \
-                        now.filename.split(self.slash)[1].split('.')[0] + '.wav'
+                    i_addon = "-guess_layout_max 1"
+                    addon = ' -af pan="stereo|c0=c0|c1=-1*c1" -ac 1'
 
                 if not now.is_live:
                     # Have youtube-dl handle downloading rather than ffmpeg , again cause ffmpeg is just bad at it
@@ -302,7 +293,7 @@ class Player:
             return
 
         with await self.download_lock:
-            async with self.bot.session.get(self.current_entry.url) as resp:
+            async with self.bot.session.get(self.current_entry.webpage_url) as resp:
                 response = await resp.text()
             soup = bs4.BeautifulSoup(response, "lxml")
             autoplayitems = [a for a in
