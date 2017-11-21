@@ -102,7 +102,7 @@ class Player:
 
         self.bot.loop.create_task(self.play(str(seektime.strftime('%H:%M:%S.%f')), prog))
 
-    async def play(self, seek="00:00:00", seeksec=0):
+    async def play(self, seek=None, seeksec=0):
         """
         Manage Effects, Volume and Seeking,
         makes the voice_client play an FFmpeg AudioSource
@@ -144,7 +144,7 @@ class Player:
                     self.current_process = stream_process
                     ytdl_player = discord.FFmpegPCMAudio(
                         stream_process.stdout,
-                        before_options="-nostdin -ss %s" % seek,
+                        before_options=f"-nostdin{' -ss '+seek if seek is not None else ''}",
                         options="-acodec pcm_s16le -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
                         pipe=True)
                 else:
@@ -178,7 +178,7 @@ class Player:
                         self.start_time = time.time() - seeksec
 
                     self.skip_votes = []
-                if seek == "00:00:00" and not self.volume_event.is_set():
+                if seek is None and not self.volume_event.is_set():
                     self.bot.loop.create_task(self.manage_nowplaying())
 
     # Both 'pause' and 'resume' will set current_time so that using the
