@@ -19,7 +19,7 @@ class Playlist:
         return self.entries[index-1]
 
     def estimate_time(self, position, player):
-        estimated_time = sum([e['duration'] for e in islice(self.entries, player.index+1, position - 1)])
+        estimated_time = sum([e.duration for e in islice(self.entries, player.index+1, position - 1)])
         try:
             estimated_time += (player.current_entry.duration - player.progress)
         except:
