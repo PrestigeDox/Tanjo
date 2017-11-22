@@ -38,7 +38,7 @@ class Music:
 
             # This timeout never triggers, not sure
             try:
-                vc = await message.author.voice.channel.connect(timeout=6.0, reconnect=True)
+                vc = await message.author.voice.channel.connect(timeout=6.0)
             except asyncio.TimeoutError:
                 np_embed = discord.Embed(title='Error', description="Wasn't able to connect, please try again!",
                                          colour=self.color)
