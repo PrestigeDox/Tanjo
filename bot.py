@@ -2,6 +2,7 @@ import aiohttp
 import discord
 import json
 
+from asyncpg import create_pool
 from datetime import datetime
 from discord.ext import commands
 from music.downloader import Downloader
@@ -21,7 +22,8 @@ class Tanjo(commands.Bot):
         # TODO:
         # - Dynamic prefixes (per guild)
         # - Migrate help command from Watashi
-        super().__init__(command_prefix=commands.when_mentioned_or(None), description=self.description, pm_help=None, *args, **kwargs)
+        super().__init__(command_prefix=commands.when_mentioned_or(None), description=self.description,
+                         pm_help=None, *args, **kwargs)
 
         self.downloader = Downloader(download_folder='dload')
         # Startup extensions (none yet)
@@ -52,6 +54,8 @@ class Tanjo(commands.Bot):
     async def on_ready(self):
         if not hasattr(self, 'start_time'):
             self.start_time = datetime.now()
+
+        self.conn_pool = await create_pool(database='tanjo', user='postgres', password=self.config['db_pass'])
 
         for ext in self.startup_ext:
             try:
