@@ -123,7 +123,7 @@ class Music:
                 # If not, we're passing it up to extract_info
                 else:
                     song = await ytsearch(bot, message, song_name)
-                    info = await bot.downloader.extract_info(bot.loop, song[1], download=False, process=False,
+                    info = await bot.downloader.extract_info(bot.loop, song[1], download=False, process=True,
                                                              retry_on_error=True)
                     if info['is_live']:
                         url = info['webpage_url']

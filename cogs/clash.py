@@ -31,11 +31,17 @@ class ClashOfClans:
         if not await _verify_tag(tag):
             return None
 
-        async with self.session.get(f"{self.clans}{quote_plus(tag)}", headers=self.headers) as resp:
-            if resp.status != 200:
-                await ctx.error("An error has occurred, please check your provided tag")
-                return None
-            clan_data = await resp.json()
+        if not await self.bot.redis.execute('EXISTS', tag):
+            async with self.session.get(f"{self.clans}{quote_plus(tag)}", headers=self.headers) as resp:
+                if resp.status != 200:
+                    await ctx.error("An error has occurred, please check your provided tag")
+                    return None
+                clan_data = await resp.json()
+            await self.bot.redis.execute('SET', tag, str(json.dumps(clan_data)))
+            await self.bot.redis.execute('EXPIRE', tag, 7200)
+        else:
+            print('redis exists')
+            clan_data = json.loads(await self.bot.redis.execute('GET', tag))
 
         emb = discord.Embed(title=clan_data['name'], description=clan_data['tag'])
 
@@ -45,7 +51,7 @@ class ClashOfClans:
 
         emb.add_field(name="Total Members", value=clan_data['members'], inline=True)
         emb.add_field(name="Type", value="Invite Only" if clan_data['type'] == "inviteOnly"
-                     else clan_data['type'].capitalize())
+                      else clan_data['type'].capitalize())
 
         emb.add_field(name="Clan Level", value=clan_data['clanLevel'], inline=True)
         emb.add_field(name="Clan Points", value=clan_data['clanPoints'])
@@ -94,11 +100,16 @@ class ClashOfClans:
         else:
             if not await _verify_tag(tag):
                 return
-
-        async with self.session.get(f"{self.player}{quote_plus(tag)}", headers=self.headers) as resp:
-            if resp.status != 200:
-                return await ctx.error("An error has occurred, please check your provided tag")
-            player_data = await resp.json()
+        if not await self.bot.redis.execute('EXISTS', tag):
+            async with self.session.get(f"{self.player}{quote_plus(tag)}", headers=self.headers) as resp:
+                if resp.status != 200:
+                    return await ctx.error("An error has occurred, please check your provided tag")
+                player_data = await resp.json()
+            await self.bot.redis.execute('SET', tag, str(json.dumps(player_data)))
+            await self.bot.redis.execute('EXPIRE', tag, 7200)
+        else:
+            print('redis exists')
+            player_data = json.loads(await self.bot.redis.execute('GET', tag))
 
         player_league = self.leagues.get_league(player_data['trophies'])
         player_bestleague = self.leagues.get_league(player_data['bestTrophies'])
@@ -167,14 +178,12 @@ class ClashOfClans:
                 await player_msg.remove_reaction(self.reaction_emojis[1], ctx.author)
 
                 await player_msg.add_reaction(self.reaction_emojis[0])
-                continue
             elif str(reaction.emoji) == self.reaction_emojis[0]:
                 await player_msg.edit(embed=em)
                 await player_msg.remove_reaction(self.reaction_emojis[0], self.bot.user)
                 await player_msg.remove_reaction(self.reaction_emojis[0], ctx.author)
 
                 await player_msg.add_reaction(self.reaction_emojis[1])
-                continue
 
     @clash.command(name="clan")
     async def clan(self, ctx, *, tag: str=None):

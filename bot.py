@@ -1,4 +1,5 @@
 import aiohttp
+import aioredis
 import discord
 import json
 
@@ -56,6 +57,8 @@ class Tanjo(commands.Bot):
             self.start_time = datetime.now()
 
         self.conn_pool = await create_pool(database='tanjo', user='postgres', password=self.config['db_pass'])
+
+        self.redis = await aioredis.create_pool(('localhost', 6379))
 
         for ext in self.startup_ext:
             try:
