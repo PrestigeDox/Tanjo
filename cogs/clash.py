@@ -13,11 +13,54 @@ class ClashOfClans:
     def __init__(self, bot):
         self.bot = bot
         self.session = bot.session
-        self.key = bot.config['clash_key']
         self.leagues = Leagues()
         self.player = "https://api.clashofclans.com/v1/players/"
+        self.clans = "https://api.clashofclans.com/v1/clans/"
+        self.reaction_emojis = ('⚔', '🛡')
+        self.headers = {'Accept': 'application/json',
+                        'Authorization': f"Bearer {bot.config['clash_key']}"}
 
-    @commands.command()
+    async def _clan_data(self, ctx, tag):
+        async def _verify_tag(ans_tag):
+            if not len(ans_tag) == 9 and not ans_tag.startswith('#'):
+                await ctx.error("A clan tag starts with '#' and has a total length of 9!\nPlease try again.")
+                return False
+            else:
+                return True
+
+        if not await _verify_tag(tag):
+            return None
+
+        async with self.session.get(f"{self.clans}{quote_plus(tag)}", headers=self.headers) as resp:
+            if resp.status != 200:
+                await ctx.error("An error has occurred, please check your provided tag")
+                return None
+            clan_data = await resp.json()
+
+        emb = discord.Embed(title=clan_data['name'], description=clan_data['tag'])
+
+        emb.add_field(name="Required Trophies :trophy:", value=f"{clan_data['requiredTrophies']}", inline=True)
+
+        emb.add_field(name="Location", value=clan_data['location']['name'])
+
+        emb.add_field(name="Total Members", value=clan_data['members'], inline=True)
+        emb.add_field(name="Type", value="Invite Only" if clan_data['type'] == "inviteOnly"
+                     else clan_data['type'].capitalize())
+
+        emb.add_field(name="Clan Level", value=clan_data['clanLevel'], inline=True)
+        emb.add_field(name="Clan Points", value=clan_data['clanPoints'])
+        emb.add_field(name="Clan Versus Points", value=clan_data['clanVersusPoints'], inline=True)
+        emb.add_field(name="War Frequency", value=clan_data['warFrequency'].capitalize())
+        emb.add_field(name="War Win Streak", value=clan_data['warWinStreak'], inline=True)
+        emb.add_field(name="War Wins", value=clan_data['warWins'])
+        emb.add_field(name="War Log", value="Public" if clan_data['isWarLogPublic'] else "Hidden", inline=True)
+        emb.add_field(name="Description", value=clan_data['description'], inline=False)
+
+        emb.set_thumbnail(url=clan_data['badgeUrls']['medium'])
+
+        return emb
+
+    @commands.group(invoke_without_command=True)
     async def clash(self, ctx, *, tag: str=None):
         """ Fetch Clash of Clans player details """
         async def _verify_tag(ans_tag):
@@ -52,10 +95,7 @@ class ClashOfClans:
             if not await _verify_tag(tag):
                 return
 
-        headers = {'Accept': 'application/json',
-                   'Authorization': f'Bearer {self.key}'}
-
-        async with self.session.get(f"{self.player}{quote_plus(tag)}", headers=headers) as resp:
+        async with self.session.get(f"{self.player}{quote_plus(tag)}", headers=self.headers) as resp:
             if resp.status != 200:
                 return await ctx.error("An error has occurred, please check your provided tag")
             player_data = await resp.json()
@@ -101,67 +141,54 @@ class ClashOfClans:
         em.set_footer(text=f"{player_data['clan']['tag']}  |  Clan Name: {player_data['clan']['name']}",
                       icon_url=player_data['clan']['badgeUrls']['small'])
 
-        await ctx.send(embed=em)
+        player_msg = await ctx.send(embed=em)
 
-    # @google.command(name="images", aliases=['img', 'image'])
-    # async def images(self, ctx, *, query: str=None):
-    #     """ Search Google for Images """
-    #     # Handle empty query
-    #     if query is None:
-    #         return await ctx.error('Please provide a query!')
-    #
-    #     # Using these specific headers and "lnms" as source, will provide divs with "rg_meta" classes,
-    #     # The modern image search page being JS rendered, data in these divs are jsons with raw image URLs
-    #     # Old image search pages, only have thumbnails and a direct link to websites
-    #     params = {'q': quote_plus(query), 'source': 'lmns', 'tbm': 'isch'}
-    #     async with self.session.get(self.url, params=params, headers=self.image_headers) as r:
-    #         html = await r.text()
-    #
-    #     # Healthy
-    #     soup = BeautifulSoup(html, 'lxml')
-    #
-    #     # Go over 4 items, json.loads the item text, and grab "ou" probably stands for "original url"
-    #     images = []
-    #     for item in soup.select('div.rg_meta')[:4]:
-    #         images.append({'url': json.loads(item.text)["ou"], 'title': json.loads(item.text)["pt"],
-    #                        'page_link': json.loads(item.text)["ru"]})
-    #
-    #     # Setup a base embed
-    #     em = discord.Embed(title=images[0]['title'], url=images[0]['page_link'])
-    #     em.set_author(name=f"Image results for {query}")
-    #     em.set_image(url=images[0]['url'])
-    #
-    #     # Save the sent image as image_result for further manipulation
-    #     image_result = await ctx.send(embed=em)
-    #
-    #     # reaction_emojis has 1,2,3,4 in a sequence, so 1,2,3,4 reactions get added
-    #     for emoji in self.reaction_emojis:
-    #         await image_result.add_reaction(emoji)
-    #
-    #     while 1:
-    #         # Make sure the reaction is where we wanted it to be
-    #         def check(reaction, user):
-    #             return user == ctx.author and str(reaction.emoji) in self.reaction_emojis and reaction.message.id == image_result.id
-    #
-    #         # If someone doesn't react for 30 secs, just die :<
-    #         try:
-    #             reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
-    #         except asyncio.TimeoutError:
-    #             await image_result.delete()
-    #             break
-    #
-    #         # Remove the user's reactions for a 'button' like experience
-    #         for emoji in self.reaction_emojis:
-    #             await image_result.remove_reaction(emoji, ctx.author)
-    #
-    #         # Now, if they reacted with say '2', the index of '2' in reaction_emojis will be 1
-    #         # This corresponds to the item in our images list, so we grab the index and without any hassle
-    #         # update the embed with a new image and link
-    #         selected_item = self.reaction_emojis.index(str(reaction.emoji))
-    #         em.set_image(url=images[selected_item]['url'])
-    #         em.url = images[selected_item]['page_link']
-    #         em.title = images[selected_item]['title']
-    #         await image_result.edit(embed=em)
+        def react_check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) in self.reaction_emojis\
+                   and player_msg.id == reaction.message.id
+
+        await player_msg.add_reaction(self.reaction_emojis[1])
+
+        while 1:
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=60.0, check=react_check)
+            except asyncio.TimeoutError:
+                for emoji in self.reaction_emojis:
+                    await player_msg.remove_reaction(emoji, self.bot.user)
+                    await player_msg.remove_reaction(emoji, ctx.author)
+                return
+
+            if str(reaction.emoji) == self.reaction_emojis[1]:
+                clan_embed = await self._clan_data(ctx, player_data['clan']['tag'])
+                if clan_embed is None:
+                    return
+                await player_msg.edit(embed=clan_embed)
+                await player_msg.remove_reaction(self.reaction_emojis[1], self.bot.user)
+                await player_msg.remove_reaction(self.reaction_emojis[1], ctx.author)
+
+                await player_msg.add_reaction(self.reaction_emojis[0])
+                continue
+            elif str(reaction.emoji) == self.reaction_emojis[0]:
+                await player_msg.edit(embed=em)
+                await player_msg.remove_reaction(self.reaction_emojis[0], self.bot.user)
+                await player_msg.remove_reaction(self.reaction_emojis[0], ctx.author)
+
+                await player_msg.add_reaction(self.reaction_emojis[1])
+                continue
+
+    @clash.command(name="clan")
+    async def clan(self, ctx, *, tag: str=None):
+        """ Get a clan's info by tag. """
+
+        if tag is None:
+            return await ctx.error("Please provide a clan tag.")
+
+        clan_embed = await self._clan_data(ctx, tag)
+
+        if clan_embed is None:
+            return
+
+        await ctx.send(embed=clan_embed)
 
 
 def setup(bot):
