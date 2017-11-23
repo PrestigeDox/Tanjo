@@ -27,7 +27,7 @@
 	- Sudoku
 - **Actual Games:**
 	- Fortnite
-	- Clash of Clans
+	- ~~Clash of Clans~~
 	- Clash Royale
 	- WoT (World of Tanks)
 	- League of Legends
