@@ -121,49 +121,6 @@ class Utilities:
         else:
             return await ctx.error('Please provide something to TextMojify.')
 
-    '''@commands.command(description='To use the webapp go to http://eeemo.net/')
-    async def zalgo(self, ctx, *, message: str=None):
-        """Fuck up text
-
-        BROKEN!!! I'll fix it soon™
-        """
-        try:
-            await ctx.channel.trigger_typing()
-            await ctx.message.delete()
-        except discord.Forbidden:
-            pass
-
-        user = ctx.message.author.display_name
-        if message != None:
-            words = message.split()
-            try:
-                iterations = int(words[len(words) - 1])
-                words = words[:-1]
-            except Exception:
-                iterations = 1
-
-            if iterations > 100:
-                iterations = 100
-            if iterations < 1:
-                iterations = 1
-
-            zalgo = " ".join(words)
-            for i in range(iterations):
-                if len(zalgo) > 2000:
-                    break
-                zalgo = self._zalgo(zalgo)
-
-            zalgo = zalgo[:2000]
-            e = discord.Embed(colour=discord.Colour(0xed791d))
-            e.set_author(name=user, icon_url=ctx.message.author.avatar_url)
-            e.description = zalgo
-            try:
-                await ctx.send(embed=e)
-            except discord.HTTPException:
-                await ctx.send('Unable to send embeds here!')
-        else:
-            await ctx.send(f'Usage: `{ctx.prefix}zalgo [your text]`', delete_after=5)'''
-
     @commands.command()
     async def esrever(self, ctx, *, msg: str = None):
         """ Write backwards because reasons, in Embed """
@@ -175,20 +132,6 @@ class Utilities:
         else:
             e.description = f'`{msg.lower()[::-1]}`    \N{LEFTWARDS BLACK ARROW}'
 
-        try:
-            await ctx.send(embed=e)
-        except discord.HTTPException:
-            return await ctx.error('Unable to send embeds here!')
-
-    @commands.command(aliases=['thisis'])
-    async def thisistisis(self, ctx, *, text):
-        """ Secret language for initiates only. Not! """
-
-        sis = text.replace('a', 'i').replace('A', 'I').replace('e', 'i').replace('E', 'I') \
-            .replace('o', 'i').replace('O', 'I').replace('u', 'i').replace('U', 'I')
-
-        e = discord.Embed(colour=self.bot.user_color)
-        e.add_field(name=f'~~*{text}*~~', value=f'```{sis}```')
         try:
             await ctx.send(embed=e)
         except discord.HTTPException:
@@ -266,61 +209,6 @@ class Utilities:
             await ctx.send(embed=e)
         except discord.HTTPException:
             return await ctx.error('Unable to send embeds here!')
-
-    @commands.group(invoke_without_command=True, aliases=['ud', 'urbandict'])
-    async def urban(self, ctx, *, query: str):
-        """ Check UrbanDictionary for the meaning of a word """
-        try:
-            resultlst = await self.bot.loop.run_in_executor(None, ud.define, query)
-            item = resultlst[0]
-        except IndexError:
-            return await ctx.error(f'Unable to find definition for `{query}`.')
-
-        em = discord.Embed(color=self.bot.user_color)
-        em.set_author(name="\U0001f4d6 Urban Dictionary")
-        em.add_field(name="Word", value=item.word, inline=False)
-        em.add_field(name="Definition", value=item.definition, inline=False)
-        em.add_field(name="Example(s)", value=item.example, inline=False)
-
-        await ctx.send(embed=em)
-
-    @urban.command(aliases=['-s'])
-    async def search(self, ctx, *, query: str):
-        """ Search UrbanDictoinary for a Specific Word """
-
-        resultlst = await self.bot.loop.run_in_executor(None, ud.define, query)
-
-        msg = []
-        for number, option in enumerate(resultlst[:4]):
-            msg.append(f"{number + 1}. {option.word}\n  " 
-                       f"{option.definition[:57]+'...' if len(option.definition)>65 else option.definition}")
-        send_msg = '\n'.join(msg)
-        em = discord.Embed(title="Results", description=send_msg, color=self.bot.user_color)
-        em.set_footer(text="Type 'exit' to leave the menu.")
-        menumsg = await ctx.send(embed=em)
-
-        def check(m):
-            return m.author == ctx.message.author and m.channel == ctx.message.channel and m.content.isdigit()
-        response = await self.bot.wait_for('message', check=check)
-
-        try:
-            if response.content.lower() == 'exit':
-                await response.delete()
-                await menumsg.delete()
-                return
-            else:
-                await response.delete()
-                await menumsg.delete()
-                item = resultlst[int(response.content) - 1]
-        except IndexError:
-            return await ctx.error('Invalid option!')
-
-        em = discord.Embed(color=self.bot.user_color)
-        em.set_author(name="\U0001f4d6 Urban Dictionary")
-        em.add_field(name="Word", value=item.word)
-        em.add_field(name="Definition", value=item.definition)
-        em.add_field(name="Example(s)", value=item.example)
-        await ctx.send(embed=em)
 
     @urban.command(aliases=['-r'])
     async def random(self, ctx):
