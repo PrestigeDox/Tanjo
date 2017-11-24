@@ -43,25 +43,6 @@ class Utilities:
                       'lizard': "\N{LIZARD} **Lizard!**",
                       'spock': "\N{RAISED HAND WITH PART BETWEEN MIDDLE AND RING FINGERS} **Spock!**"}
 
-    @commands.command(aliases=['yt', 'vid'])
-    async def video(self, ctx, *, search):
-        """ Search for the first videos match on YouTube """
-
-        with await ctx.channel.typing():
-            search = search.replace(' ', '+').lower()
-
-            with await self.bot.session.get(f"https://www.youtube.com/results?search_query={search}") as resp:
-                response = await resp.text()
-
-            result = BeautifulSoup(response, "lxml")
-            dir_address = f"{result.find_all(attrs={'class': 'yt-uix-tile-link'})[0].get('href')}"
-            output = f"**Top Result:**\nhttps://www.youtube.com{dir_address}"
-
-            if not dir_address:
-                return await ctx.errer("No results found!")
-
-            await ctx.send(output)
-
     @commands.command(aliases=['rock', 'paper', 'scissors', 'lizard', 'spock', 'rps'], no_pm=True)
     async def settle(self, ctx, opt: str = None):
         """ Play rock paper scissors, lizard spock
@@ -129,23 +110,6 @@ class Utilities:
             await ctx.send(embed=e)
         except discord.HTTPException:
             return await ctx.error('Unable to send embeds here!')
-
-    @commands.command(aliases=['post_channel'], no_pm=True)
-    async def post(self, ctx, channel: discord.TextChannel, *, message: str = None):
-        """ Send a message to any channel in Guild
-        Usage: post #general Hello world! """
-
-        if channel is None:
-            return await ctx.error('Use a channel ID or name to send a message from here.')
-
-        if message is None:
-            return await ctx.error("Please provide a message to send to the provided channel")
-
-        try:
-            await channel.send(message)
-            await ctx.channel.send('Success!')
-        except discord.Forbidden:
-            return await ctx.error('The bot does Not have enough permissions to send messages in that channel.')
 
     @commands.command()
     async def textmojify(self, ctx, *, msg):
