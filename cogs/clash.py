@@ -155,6 +155,9 @@ class ClashOfClans:
 
         player_msg = await ctx.send(embed=em)
 
+        if not 'clan' in player_data.keys():
+            return
+
         def react_check(reaction, user):
             return user == ctx.author and str(reaction.emoji) in self.reaction_emojis\
                    and player_msg.id == reaction.message.id
