@@ -149,8 +149,9 @@ class ClashOfClans:
 
         em.set_thumbnail(url=player_league['url'])
 
-        em.set_footer(text=f"{player_data['clan']['tag']}  |  Clan Name: {player_data['clan']['name']}",
-                      icon_url=player_data['clan']['badgeUrls']['small'])
+        if 'clan' in player_data.keys():
+            em.set_footer(text=f"{player_data['clan']['tag']}  |  Clan Name: {player_data['clan']['name']}",
+                          icon_url=player_data['clan']['badgeUrls']['small'])
 
         player_msg = await ctx.send(embed=em)
 
