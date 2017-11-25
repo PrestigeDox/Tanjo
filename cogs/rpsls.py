@@ -13,23 +13,6 @@ class RPSLS(Enum):
     spock = "\N{RAISED HAND WITH PART BETWEEN MIDDLE AND RING FINGERS} **Spock!**"
 
 
-class RPSLSParser:
-    def __init__(self, argument):
-        argument = argument.lower()
-        if argument == "rock":
-            self.choice = RPSLS.rock
-        elif argument == "paper":
-            self.choice = RPSLS.paper
-        elif argument == "scissors":
-            self.choice = RPSLS.scissors
-        elif argument == "lizard":
-            self.choice = RPSLS.lizard
-        elif argument == "spock":
-            self.choice = RPSLS.spock
-        else:
-            raise
-
-
 class Rpsls:
     # Init with the bot reference, and a reference to the settings var
     def __init__(self, bot):
@@ -102,25 +85,20 @@ class Rpsls:
             outcome = cond[(player_choice, bot_choice)]
 
         if outcome:
-            e.set_footer(text=opt1)
-        elif not outcome:
-            e.set_footer(text=opt2)
+            result = opt1
+        elif outcome == False:
+            result = opt2
         else:
-            e.set_footer(text=opt3)
+            result = opt3
+
+        e.set_footer(text=result)
 
         try:
             await ctx.send(embed=e)
 
         # This is in case bot cannot answer with embeds, result still prints output
         except discord.HTTPException:
-            for x in outcome:
-                if x is outcome:
-                    result = opt1
-                elif x is not outcome:
-                    result = opt2
-                else:
-                    result = opt3
-                return await ctx.send(result)
+            return await ctx.send(result)
 
 
 def setup(bot):
