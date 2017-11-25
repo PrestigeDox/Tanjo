@@ -30,27 +30,25 @@ class Guess:
 
         e = discord.Embed(colour=self.bot.user_color)
         if number is None:
-            return await ctx.send('Guess a number between 1 and 11')
+            return await ctx.error('Guess a number between 1 and 11')
 
-        if number < answer or number > answer:
-            msg = f'```{random.choice(self.guessed_wrong)} {answer}```'
+        if answer < number < answer:
             q_mark = '\N{BLACK QUESTION MARK ORNAMENT}'
             e.add_field(name=f'{q_mark} Your choice {u}: `{number}`',
                         value=msg, inline=True)
             try:
                 await ctx.send(embed=e)
             except discord.HTTPException:
-                return await ctx.send(msg)
+                return await ctx.send(f'```{random.choice(self.guessed_wrong)} {answer}```')
 
-        if number == answer:
-            msg = f'```{random.choice(self.guessed_right)} {u}!```'
+        elif number == answer:
             q_mark = '\N{BLACK QUESTION MARK ORNAMENT}'
             e.add_field(name=f'{q_mark} Correct number: `{answer}`',
                         value=msg, inline=True)
             try:
                 await ctx.send(embed=e)
             except discord.HTTPException:
-                return await ctx.send(msg)
+                return await ctx.send(f'```{random.choice(self.guessed_right)} {u}!```')
 
 
 def setup(bot):
