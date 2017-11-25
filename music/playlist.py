@@ -16,7 +16,7 @@ class Playlist:
         return iter(self.entries)
 
     def get_track(self, index):
-        return self.entries[index-1]
+        return self.entries[index]
 
     def estimate_time(self, position, player):
         estimated_time = sum([e.duration for e in islice(self.entries, player.index+1, position - 1)])

@@ -4,20 +4,15 @@ import collections
 import datetime
 import discord
 import time
+import os
+import subprocess
+import win_unicode_console
 
 from datetime import timedelta
 from itertools import islice
 from music.musicstate import MusicState
-from music.musicstate import EntryState
 from music.playlist import Playlist
-
-import os
-from os import listdir
-from os.path import isfile, join
-
-import subprocess
-
-import win_unicode_console
+from utils.votes import ActionVotes
 
 win_unicode_console.enable()
 
@@ -37,7 +32,7 @@ class Player:
         self.current_entry = None
         self.current_process = None
         self.start_time = None
-        self.skip_votes = []
+        self.votes = ActionVotes()
         self.lock = asyncio.Lock()
         self.qlock = asyncio.Lock()
         self.volume = 1.0
@@ -114,7 +109,7 @@ class Player:
         if self.state == MusicState.DEAD or self.voice_client.is_playing():
             return
 
-        # Make a volume string to feed to ffmpeg 
+        # Make a volume string to feed to ffmpeg
         volumestr = ' -filter:a "volume=%s"' % self.volume
 
         # This lock is the key to having only one entry being played at once
@@ -190,7 +185,7 @@ class Player:
                 # the code below facilitates changes at runtime all thanks to FFmpeg,
                 # by keeping track of the original start time down to microseconds
                 # The Volume,EQ and Seek commands, all stop the player and set a flag
-                # for their respective effect to True, telling the player to not move 
+                # for their respective effect to True, telling the player to not move
                 # to the next track when the player is stopped. 'play' is then called
                 # again with altered player attributes
                 self.current_player = ytdl_player
@@ -241,7 +236,7 @@ class Player:
 
         # Check when the last now playing message was sent, so we can
         # delete it if its older than the last message in that channel,
-        # if its the last message on that channel, we just edit it to 
+        # if its the last message on that channel, we just edit it to
         # display new info
         if self.current_entry.channel.guild in self.bot.np_msgs:
             np_msg = self.bot.np_msgs[self.current_entry.channel.guild]

@@ -9,6 +9,7 @@ from discord.ext import commands
 from music.musicstate import MusicState
 from music.player import Player
 from music.ytsearch import ytsearch
+from utils.votes import Votes
 
 
 class Music:
@@ -154,6 +155,10 @@ class Music:
         """ Search for a song on YouTube """
         await self._queue(ctx, song_name, 'None', 1)
 
+    @commands.command(aliases=['summon', 'listen'])
+    async def join(self, ctx):
+        """ Call the bot to your voice channel """
+
     @commands.command(aliases=['nowplaying', 'player'])
     async def np(self, ctx):
         """ Display currently playing track and progress """
@@ -264,8 +269,36 @@ class Music:
     @commands.command(aliases=['leave', 'destroy', 'dc'])
     async def disconnect(self, ctx):
         """ Make the bot leave your voice channel """
+        player = self.bot.players.get(ctx.message.guild)
+        if player is None:
+            return await ctx.error('A player for this guild does not exist')
+
+        users = sum(1 for m in ctx.author.voice.channel.members if not (
+                    m.voice.deaf or m.voice.self_deaf or m.id == self.bot.user.id))
+
+        if users == 2:
+            req = 2
+        else:
+            req = round((2/3)*users)
+
+        if users == 1:
+            pass
+        elif discord.utils.get(ctx.author.roles, name='DJ'):
+            pass
+        else:
+            votes = player.votes.disconnect
+            if votes.add_vote(ctx.author.id):
+                await ctx.send(f"Your vote to disconnect was added!\n*{votes.total_votes}/{req} votes received.*")
+            else:
+                return await ctx.send("You have already voted for the bot to disconnect.\n"
+                                      f"*{votes.total_votes}/{req} votes received.*")
+            if votes.is_passed(req):
+                await ctx.send("Vote requirements were fulfilled, the bot will now disconnect.")
+                pass
+            else:
+                return
+
         try:
-            player = self.bot.players[ctx.message.guild]
             player.state = MusicState.DEAD
             self.bot.players.pop(ctx.message.guild)
         except KeyError:
@@ -273,7 +306,7 @@ class Music:
 
         await self.bot.vc_clients.pop(ctx.message.guild).disconnect()
 
-        em = discord.Embed(title="Disconnected", description="by " + ctx.message.author.mention, colour=self.color)
+        em = discord.Embed(title="Disconnected", colour=self.color)
         em.set_thumbnail(url="https://imgur.com/4me8pGr.png")
         await ctx.send(embed=em)
 
@@ -330,16 +363,6 @@ class Music:
             player.jump_event.set()
             await ctx.send(f"Will jump to **{pickno}** after the current track finishes playing!")
 
-    @commands.command(aliases=['remove', 'rm'])
-    async def rmsong(self, ctx, *, index: int=None):
-        """ Remove a song from the queue """
-        player = self.bot.players[ctx.message.guild]
-        if index is None:
-            return await ctx.error(f"Please provide a valid index number between 1 and {len(player.playlist.entries)}")
-        track = player.playlist.get_track(index)
-        player.playlist.remove(index)
-        await ctx.send(f"**{track.title}** was removed from your playlist!")
-
     @commands.command()
     async def pause(self, ctx):
         """ Pause the player if it's playing """
@@ -380,36 +403,57 @@ class Music:
         await ctx.send(f"Seeking to {seektime}")
     
     @commands.command()
-    async def skip(self, ctx):
+    async def skip(self, ctx, *, index: int=None):
         """ Add votes to skip a track """
-        player = self.bot.players[ctx.message.guild]
+        player = self.bot.players.get(ctx.message.guild)
+        if player is None:
+            return await ctx.error('A player for this guild does not exist')
+
         if not player.voice_client.is_playing():
             return await ctx.error("Nothing is playing to skip!")
+
+        if index is None:
+            index = player.index-1
+
+        try:
+            entry = player.playlist.entries[index]
+        except IndexError:
+            return await ctx.error(f"No entry was found at position {index}")
+
+        users = sum(1 for m in ctx.author.voice.channel.members if not (
+                    m.voice.deaf or m.voice.self_deaf or m.id == self.bot.user.id))
+
+        if users == 2:
+            req = 2
         else:
-            if player.current_entry.author == ctx.message.author:
-                await ctx.send(f"**{player.current_entry.title}**"
-                               f"was skipped by it's author, {player.current_entry.author}!"
-                               )
-                player.voice_client.stop()
+            req = round((2/3)*users)
+
+        if users == 1:
+            pass
+        elif discord.utils.get(ctx.author.roles, name='DJ'):
+            pass
+        else:
+            votes = discord.utils.get(player.votes.skip, for_item=index)
+            if votes is None:
+                votes = Votes(index)
+                player.votes.skip.append(votes)
+            if votes.add_vote(ctx.author.id):
+                await ctx.send(f"Your vote to skip **{entry.name}** was added!\n"
+                               f"*{votes.total_votes}/{req} votes received.*")
             else:
-                if ctx.message.author not in player.skip_votes:
-                    num_voice = sum(1 for m in ctx.message.author.voice.channel.members if not (
-                        m.voice.deaf or m.voice.self_deaf or m.id == self.bot.user.id))
-                    player.skip_votes.append(ctx.message.author)
-                    current_votes = len(player.skip_votes)
-                    required_votes = round(num_voice * (2 / 3))
-                    await ctx.send(
-                        f"Your vote was added!\n**{current_votes}/{required_votes}**" 
-                        "skip votes recieved, song will be skipped upon meeting requirements")
-                    if current_votes >= required_votes:
-                        await ctx.send(
-                            f"**{player.current_entry.title}** was skipped upon meeting skip vote requirements!")
-                        player.voice_client.stop()
-                    else:
-                        await ctx.send(
-                            f"You have already voted to skip **{player.current_entry.title}**,"
-                            "wait till more votes arrive!"
-                            )
+                return await ctx.send(f"You have already voted to skip **{entry.name}**.\n"
+                                      f"*{votes.total_votes}/{req} votes received.*")
+            if votes.is_passed(req):
+                await ctx.send(f"Vote requirements were fulfilled, **{entry.name}** will be skipped.")
+                player.votes.skip.remove(votes)
+                pass
+            else:
+                return
+
+        if entry == player.current_entry:
+            player.voice_client.stop()
+        else:
+            player.playlist.remove(index)
 
     @commands.command()
     async def volume(self, ctx, *, volume: float=None):
