@@ -1,5 +1,4 @@
 import discord
-import asyncio
 import random
 from discord.ext import commands
 
@@ -12,14 +11,13 @@ class Hexa:
     @commands.command(description="A random number from 1 to 100")
     async def hexa(self, ctx):
         """ Get a random number from 1 to 100 """
-        msg = f'{random.choice(self.reply)} number between 1 and 100: **`{random.randint(1, 99)}`**'
         u = ctx.message.author.display_name
         e = discord.Embed(colour=self.bot.user_color)
         e.add_field(name=f"{u}'s hexa:", value=msg)
         try:
             await ctx.send(embed=e)
         except discord.HTTPException:
-            return await ctx.error(msg)
+            return await ctx.error(f'{random.choice(self.reply)} number between 1 and 100: **`{random.randint(1, 99)}`**')
 
 
 def setup(bot):
