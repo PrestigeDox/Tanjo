@@ -3,13 +3,10 @@ import discord
 import asyncio
 import random
 import json
-import urbandictionary as ud
-import string
 import win_unicode_console
 
 win_unicode_console.enable()
 
-from bs4 import BeautifulSoup
 from discord.ext import commands
 from utils.calcparser import NumericStringParserForPython3
 
@@ -19,107 +16,8 @@ class Utilities:
     def __init__(self, bot):
         self.bot = bot
         self.nsp = NumericStringParserForPython3()
-        textmoji_strs = '🅰🅱🇨🇩🇪🇫🇬🇭🇮🇯🇰🇱🇲🇳🅾🅿🇶🇷🇸🇹🇺🇻🇼🇽🇾🇿'
-        self.textmoji_table = dict((ord(char), trans) for char, trans in zip(string.ascii_lowercase, textmoji_strs))
         dev_server = discord.utils.find(lambda s: s.id == 365893884053553162, bot.guilds)
         self.feedback_channel = dev_server.get_channel(365893884053553162)
-        self.guessed_wrong = [
-                'Not even close, the right number was:',
-                'Better luck next time, the number was:',
-                'How could you not have known that the number was:',
-                'Hmm, well, the right number was:',
-                'Not getting any better, the number was:',
-                'Right number was:'
-                 ]
-        self.guessed_right = [
-                'You guessed correctly',
-                'Everyone knew you could do it',
-                'You got the right answer',
-                'History will remember you...'
-            ]
-        self.RPSLS = {'rock': "\N{RAISED FIST} **Rock!**",
-                      'paper': "\N{RAISED HAND WITH FINGERS SPLAYED} **Paper!**",
-                      'scissors': "\N{BLACK SCISSORS} **Scissors!**",
-                      'lizard': "\N{LIZARD} **Lizard!**",
-                      'spock': "\N{RAISED HAND WITH PART BETWEEN MIDDLE AND RING FINGERS} **Spock!**"}
-
-    @commands.command(aliases=['rock', 'paper', 'scissors', 'lizard', 'spock', 'rps'], no_pm=True)
-    async def settle(self, ctx, opt: str = None):
-        """ Play rock paper scissors, lizard spock
-
-        Scissors cut paper, paper covers rock,
-        rock crushes lizard, lizard poisons Spock,
-        Spock smashes scissors, scissors decapitate lizard,
-        lizard eats paper, paper disproves Spock,
-        Spock vaporizes rock and, as it’s always been,
-        rock crushes scissors.
-        """
-        if opt is None:
-            return await ctx.error("Please select one of rock, paper, scissors, lizard and spock")
-        player_choice = self.RPSLS[opt]
-        a = ctx.message.author.display_name
-        b = self.bot.user.name
-
-        available = self.RPSLS['rock'], self.RPSLS['paper'], self.RPSLS['scissors'], self.RPSLS['lizard'], self.RPSLS['spock']
-        bot_choice = random.choice(available)
-
-        # I know, this is a mess, but trust me, it works correctly
-        # each item wins or loses depending on the random choice
-        # against the user's input.
-        # Fun fact, this cond took me 15 min to write, and after that I slept
-        # 18 hours straight!
-        cond = {
-            (self.RPSLS['rock'], self.RPSLS['paper']): False,
-            (self.RPSLS['rock'], self.RPSLS['scissors']): True,
-            (self.RPSLS['rock'], self.RPSLS['lizard']): True,
-            (self.RPSLS['rock'], self.RPSLS['spock']): False,
-            (self.RPSLS['paper'], self.RPSLS['rock']): True,
-            (self.RPSLS['paper'], self.RPSLS['scissors']): False,
-            (self.RPSLS['paper'], self.RPSLS['lizard']): False,
-            (self.RPSLS['paper'], self.RPSLS['spock']): True,
-            (self.RPSLS['scissors'], self.RPSLS['rock']): False,
-            (self.RPSLS['scissors'], self.RPSLS['paper']): True,
-            (self.RPSLS['scissors'], self.RPSLS['lizard']): True,
-            (self.RPSLS['scissors'], self.RPSLS['spock']): False,
-            (self.RPSLS['lizard'], self.RPSLS['rock']): False,
-            (self.RPSLS['lizard'], self.RPSLS['paper']): True,
-            (self.RPSLS['lizard'], self.RPSLS['scissors']): False,
-            (self.RPSLS['lizard'], self.RPSLS['spock']): True,
-            (self.RPSLS['spock'], self.RPSLS['rock']): True,
-            (self.RPSLS['spock'], self.RPSLS['paper']): False,
-            (self.RPSLS['spock'], self.RPSLS['scissors']): True,
-            (self.RPSLS['spock'], self.RPSLS['lizard']): False
-            }
-
-        e = discord.Embed(colour=self.bot.user_color)
-        e.add_field(name=f"{a}'s choice:", value=f'{player_choice.value}', inline=True)
-        e.add_field(name=f"{b}'s choice:", value=f'{bot_choice.value}', inline=True)
-
-        if bot_choice == player_choice:
-            outcome = None
-        else:
-            outcome = cond[(player_choice, bot_choice)]
-
-        if outcome:
-            e.set_footer(text=f"{a} wins, {b} loses...")
-        elif not outcome:
-            e.set_footer(text=f"{b} wins! {a} loses...")
-        else:
-            e.set_footer(text="We're square")
-        try:
-            await ctx.send(embed=e)
-        except discord.HTTPException:
-            return await ctx.error('Unable to send embeds here!')
-
-    @commands.command()
-    async def textmojify(self, ctx, *, msg):
-        """ Convert text into emojis """
-
-        if msg is not None:
-            text = msg.lower().translate(self.textmoji_table)
-            await ctx.send(text)
-        else:
-            return await ctx.error('Please provide something to TextMojify.')
 
     @commands.command()
     async def esrever(self, ctx, *, msg: str = None):
@@ -210,19 +108,6 @@ class Utilities:
         except discord.HTTPException:
             return await ctx.error('Unable to send embeds here!')
 
-    @urban.command(aliases=['-r'])
-    async def random(self, ctx):
-        """ Get a Random Word and its Meaning from UrbanDictionary """
-        item = await self.bot.loop.run_in_executor(None, ud.random)
-
-        em = discord.Embed(color=self.bot.user_color)
-        em.set_author(name="\U0001f4d6 Urban Dictionary")
-        em.add_field(name="Word", value=item[0].word)
-        em.add_field(name="Definition", value=item[0].definition)
-        em.add_field(name="Example(s)", value=item[0].example)
-
-        await ctx.send(embed=em)
-
     @commands.command(aliases=['suggestion'])
     async def feedback(self, ctx, *, text: str = 'Sorry, forgot to write.'):
         """Suggestions and feature requests"""
@@ -241,34 +126,6 @@ class Utilities:
         except discord.Forbidden:
             return await ctx.error('Unable to send feedback, please join Support Server\nhttps://discord.gg/9qgzkQV')
 
-    @commands.command()
-    async def guess(self, ctx, number: int = None):
-        """ Guess a number between 1 and 11 """
-        answer = random.randint(1, 11)
-        u = ctx.message.author.display_name
-
-        e = discord.Embed(colour=self.bot.user_color)
-        if number is None:
-            return await ctx.send('Guess a number between 1 and 11')
-
-        if number < answer or number > answer:
-            q_mark = '\N{BLACK QUESTION MARK ORNAMENT}'
-            e.add_field(name=f'{q_mark} Your choice {u}: `{number}`',
-                        value=f'```{random.choice(self.guessed_wrong)} {answer}```', inline=True)
-            try:
-                await ctx.send(embed=e)
-            except discord.HTTPException:
-                return await ctx.error('Unable to send embeds here!')
-
-        if number == answer:
-            q_mark = '\N{BLACK QUESTION MARK ORNAMENT}'
-
-            e.add_field(name=f'{q_mark} Correct number: `{answer}`',
-                        value=f'```{random.choice(self.guessed_right)} {u}!```', inline=True)
-            try:
-                await ctx.send(embed=e)
-            except discord.HTTPException:
-                return await ctx.error('Unable to send embeds here!')
 
     @commands.command(aliases=['prediction', 'crystalball', 'oracle', 'i-ching', 'fortune'])
     async def iching(self, ctx, *, member: discord.Member = None):
