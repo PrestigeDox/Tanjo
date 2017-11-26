@@ -413,7 +413,7 @@ class Music:
             return await ctx.error("Nothing is playing to skip!")
 
         if index is None:
-            index = player.index-1
+            index = player.index
 
         try:
             entry = player.playlist.entries[index]

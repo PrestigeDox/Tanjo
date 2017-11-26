@@ -1,5 +1,4 @@
 import asyncio
-import discord
 import traceback
 import textwrap
 import io

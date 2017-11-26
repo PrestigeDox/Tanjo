@@ -18,8 +18,8 @@ class Youtube:
 
         # The super long class def'n here is required to only catch videos, and not users / channels
         links = [(x.text, f"https://youtube.com{x['href']}")
-                for x in soup.find_all('a', {'class': 'yt-uix-tile-link '
-                                                      'yt-ui-ellipsis yt-ui-ellipsis-2 yt-uix-sessionlink spf-link '})]
+                 for x in soup.find_all('a', {'class': 'yt-uix-tile-link '
+                                                       'yt-ui-ellipsis yt-ui-ellipsis-2 yt-uix-sessionlink spf-link '})]
         return links[:limit]
 
     @commands.group(aliases=['yt'], invoke_without_subcommand=True)

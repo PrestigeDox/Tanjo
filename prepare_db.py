@@ -7,7 +7,8 @@ async def main():
     with open('data/config.json') as f:
         config = json.load(f)
 
-    conn = await asyncpg.connect('postgresql://postgres@localhost/tanjo', password=config['db_pass'])
+    conn = await asyncpg.connect('postgresql://postgres@localhost/tanjo', password=config['db_pass'],
+                                 port=config['db_port'])
     await conn.execute('''CREATE TABLE users(
     id bigint PRIMARY KEY,
     playlist text,
