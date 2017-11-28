@@ -344,24 +344,98 @@ class Music:
             player.autoplay = True
             await ctx.send("**:musical_score: Autoplay:** Started")
 
-    @commands.command(aliases=['pick'])
-    async def jump(self, ctx, *, pickno: int=None):
-        """ Jump to any index in the queue """
-        player = self.bot.players[ctx.message.guild]
+    async def _jump(self, ctx, player, index: int=None):
+        if player is None:
+            await ctx.error('A player for this guild does not exist')
+            return False
 
-        if pickno is None:
-            return await ctx.error("Invalid Input!")
+        if not player.voice_client.is_playing():
+            await ctx.error("Nothing is playing to skip!")
+            return False
 
-        if pickno - 1 < 0 or pickno > len(player.playlist.entries):
-            return await ctx.error(f"Value can only be between 1 and {len(player.playlist.entries)}")
+        if index - 1 < 0 or index > len(player.playlist.entries):
+            await ctx.error(f"Value can only be between 1 and {len(player.playlist.entries)}")
+            return False
 
-        player.index = pickno - 1
+        if index is None:
+            await ctx.error("Please provide the position you want to jump to")
+            return False
+        else:
+            index = index-1
+
+        try:
+            entry = player.playlist.entries[index]
+        except IndexError:
+            await ctx.error(f"No entry was found at position {index}")
+            return False
+
+        users = sum(1 for m in ctx.author.voice.channel.members if not (
+                    m.voice.deaf or m.voice.self_deaf or m.id == self.bot.user.id))
+
+        if users == 2:
+            req = 2
+        else:
+            req = round((2/3)*users)
+
+        if users == 1:
+            pass
+        elif discord.utils.get(ctx.author.roles, name='DJ'):
+            pass
+        else:
+            votes = player.votes.jump
+            if votes is None:
+                votes = Votes(index)
+            elif votes.for_item == index:
+                pass
+            else:
+                await ctx.error(f"A vote to jump to {votes.for_item+1} is already active")
+                return False
+
+            if votes.add_vote(ctx.author.id):
+                await ctx.send(f"Your vote to skip **{entry.name}** was added!\n"
+                               f"*{votes.total_votes}/{req} votes received.*")
+            else:
+                await ctx.send(f"You have already voted to skip **{entry.name}**.\n"
+                               f"*{votes.total_votes}/{req} votes received.*")
+                return False
+            if votes.is_passed(req):
+                await ctx.send(f"Vote requirements were fulfilled, **{entry.name}** will be skipped.")
+                player.votes.skip.remove(votes)
+                pass
+            else:
+                return
+
         if not player.voice_client.is_playing() and not player.state == MusicState.PAUSED:
+            player.index = index
             self.bot.loop.create_task(player.play())
-            await ctx.send(f"Jumping to **{pickno}**!")
+            await ctx.send(f"Jumping to **{index+1}**!")
+            return True
         else:
             player.jump_event.set()
-            await ctx.send(f"Will jump to **{pickno}** after the current track finishes playing!")
+            player.jump_event.index = index
+            await ctx.send(f"Will jump to **{index+1}** after the current track finishes playing!")
+            return False
+
+    @commands.group(invoke_without_command=True, aliases=['pick'])
+    async def jump(self, ctx, *, index: int=None):
+        """ Jump to any index in the queue """
+        player = self.bot.players.get(ctx.message.guild)
+        await self._jump(ctx, player, index)
+
+    @jump.command(name='return')
+    async def jump_return(self, ctx, *, index: int=None):
+        player = self.bot.players.get(ctx.message.guild)
+        current_index = player.index
+        await self._jump(ctx, player, index)
+        return_event = asyncio.Event()
+        player = self.bot.players.get(ctx.message.guild)
+        return_event.index = player.index
+        # Old track, resets
+        player.jump_return = return_event
+        await return_event.wait()
+        print('return event awoken')
+        player.jump_event.set()
+        player.index = current_index
 
     @commands.command()
     async def pause(self, ctx):
@@ -402,7 +476,7 @@ class Music:
         player.reset(seektime, seek_seconds)
         await ctx.send(f"Seeking to {seektime}")
     
-    @commands.command()
+    @commands.command(aliases=['remove', 'rm'])
     async def skip(self, ctx, *, index: int=None):
         """ Add votes to skip a track """
         player = self.bot.players.get(ctx.message.guild)
@@ -453,7 +527,7 @@ class Music:
         if entry == player.current_entry:
             player.voice_client.stop()
         else:
-            player.playlist.remove(index)
+            player.playlist.entries.remove(index)
 
     @commands.command()
     async def volume(self, ctx, *, volume: float=None):

@@ -43,6 +43,7 @@ class Player:
         self.repeat = 0
 
         self.jump_event = asyncio.Event()
+        self.jump_return = None
         self.volume_event = asyncio.Event()
         self.seek_event = asyncio.Event()
         # This is just original start time
@@ -199,7 +200,6 @@ class Player:
                     else:
                         self.start_time = time.time() - seeksec
 
-                    self.skip_votes = []
                 if seek is None and not self.volume_event.is_set():
                     self.bot.loop.create_task(self.manage_nowplaying())
 
@@ -289,6 +289,12 @@ class Player:
                 self.index += 1
             if self.jump_event.is_set():
                 self.jump_event.clear()
+                self.index = self.jump_event.index
+                if self.jump_return is not None:
+                    if self.jump_return.index == self.index:
+                        print(self.jump_return.index, self.index)
+                        self.jump_return.set()
+                        self.jump_return = None
             with await self.playlist.entries[self.index].lock:
                 self.bot.loop.create_task(self.play())
 
@@ -298,11 +304,29 @@ class Player:
         elif self.autoplay:
             if not self.repeat:
                 self.index += 1
+                if self.jump_event.is_set():
+                    self.jump_event.clear()
+                    self.index = self.jump_event.index
+                    if self.jump_return is not None:
+                        if self.jump_return.index == self.index:
+                            print(self.jump_return.index, self.index)
+                            self.jump_return.set()
+                            self.jump_return = None
             self.bot.loop.create_task(self.autoplay_manager())
 
         else:
-            self.index += 1
-            self.state = MusicState.STOPPED
+            if self.jump_event.is_set():
+                self.jump_event.clear()
+                self.index = self.jump_event.index
+                if self.jump_return is not None:
+                    if self.jump_return.index == self.index:
+                        print(self.jump_return.index, self.index)
+                        self.jump_return.set()
+                        self.jump_return = None
+                self.bot.loop.create_task(self.play())
+            else:
+                self.index += 1
+                self.state = MusicState.STOPPED
 
     # Following some minimal scraping, autoplay links are pulled
     # at times this might be empty so we just get the other entries below it,
