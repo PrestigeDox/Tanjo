@@ -277,7 +277,9 @@ class Player:
             if self.current_process is not None:
                 # RIP
                 self.current_process.kill()
-                # Murder
+                if self.current_process.poll() is None:
+                    # Murder
+                    self.current_process.communicate()
 
                 self.current_process = None
             return
@@ -290,11 +292,14 @@ class Player:
     def _jump_check(self):
         if self.jump_event.is_set():
             self.jump_event.clear()
+            try:
+                self.index = self.jump_event.index
+                print('setting')
+            except AttributeError:
+                pass
             if self.jump_return is not None:
                 self.jump_return.set()
                 self.jump_return = None
-            else:
-                self.index = self.jump_event.index
 
     def _timeout_dc(self):
         self.bot.loop.create_task(self._dc())
