@@ -46,7 +46,8 @@ class Player:
         self.jump_return = None
         self.volume_event = asyncio.Event()
         self.seek_event = asyncio.Event()
-        # This is just original start time
+        self.timeout_handle = None
+
         self.autoplay = False
         self.EQ = 'normal'
 
@@ -109,7 +110,8 @@ class Player:
         """
         if self.state == MusicState.DEAD or self.voice_client.is_playing():
             return
-
+        if self.timeout_handle is not None:
+            self.timeout_handle.cancel()
         # Make a volume string to feed to ffmpeg
         volumestr = ' -filter:a "volume=%s"' % self.volume
 
@@ -273,7 +275,10 @@ class Player:
                 self.seek_event.clear()
 
             if self.current_process is not None:
-                self.current_process.stdout.close()
+                # RIP
+                self.current_process.kill()
+                # Murder
+
                 self.current_process = None
             return
         self.bot.loop.create_task(self.real_next())
@@ -282,19 +287,32 @@ class Player:
     # and call prepare_entry, but if repeat is set to True, the index won't change
     # autoplay is always the last condition to be checked, so manually queued songs
     # will be served before autoplay_manager is called
+    def _jump_check(self):
+        if self.jump_event.is_set():
+            self.jump_event.clear()
+            if self.jump_return is not None:
+                self.jump_return.set()
+                self.jump_return = None
+            else:
+                self.index = self.jump_event.index
+
+    def _timeout_dc(self):
+        self.bot.loop.create_task(self._dc())
+
+    async def _dc(self):
+        if self.state == MusicState.DEAD:
+            return
+        await self.current_entry.channel.send("The bot has been inactive for 10 minutes, it will now disconnect.")
+        self.state = MusicState.DEAD
+        self.bot.players.pop(self.voice_client.guild)
+        await self.bot.vc_clients.pop(self.voice_client.guild).disconnect(force=True)
+
     async def real_next(self):
         self.state = MusicState.SWITCHING
         if len(collections.deque(islice(self.playlist.entries, self.index, len(self.playlist.entries) - 1))) > 0:
             if not self.repeat and not self.jump_event.is_set():
                 self.index += 1
-            if self.jump_event.is_set():
-                self.jump_event.clear()
-                self.index = self.jump_event.index
-                if self.jump_return is not None:
-                    if self.jump_return.index == self.index:
-                        print(self.jump_return.index, self.index)
-                        self.jump_return.set()
-                        self.jump_return = None
+            self._jump_check()
             with await self.playlist.entries[self.index].lock:
                 self.bot.loop.create_task(self.play())
 
@@ -304,29 +322,17 @@ class Player:
         elif self.autoplay:
             if not self.repeat:
                 self.index += 1
-                if self.jump_event.is_set():
-                    self.jump_event.clear()
-                    self.index = self.jump_event.index
-                    if self.jump_return is not None:
-                        if self.jump_return.index == self.index:
-                            print(self.jump_return.index, self.index)
-                            self.jump_return.set()
-                            self.jump_return = None
+                self._jump_check()
             self.bot.loop.create_task(self.autoplay_manager())
 
         else:
             if self.jump_event.is_set():
-                self.jump_event.clear()
-                self.index = self.jump_event.index
-                if self.jump_return is not None:
-                    if self.jump_return.index == self.index:
-                        print(self.jump_return.index, self.index)
-                        self.jump_return.set()
-                        self.jump_return = None
+                self._jump_check()
                 self.bot.loop.create_task(self.play())
             else:
                 self.index += 1
                 self.state = MusicState.STOPPED
+                self.timeout_handle = self.bot.loop.call_later(600, self._timeout_dc)
 
     # Following some minimal scraping, autoplay links are pulled
     # at times this might be empty so we just get the other entries below it,
