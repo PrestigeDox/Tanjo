@@ -349,10 +349,6 @@ class Music:
             await ctx.error('A player for this guild does not exist')
             return False
 
-        if not player.voice_client.is_playing():
-            await ctx.error("Nothing is playing to skip!")
-            return False
-
         if index - 1 < 0 or index > len(player.playlist.entries):
             await ctx.error(f"Value can only be between 1 and {len(player.playlist.entries)}")
             return False
@@ -426,10 +422,10 @@ class Music:
     async def jump_return(self, ctx, *, index: int=None):
         player = self.bot.players.get(ctx.message.guild)
         current_index = player.index
-        await self._jump(ctx, player, index)
+        cond = await self._jump(ctx, player, index)
         return_event = asyncio.Event()
         player = self.bot.players.get(ctx.message.guild)
-        return_event.index = player.index
+        return_event.index = player.index if cond else player.jump_event.index
         # Old track, resets
         player.jump_return = return_event
         await return_event.wait()
