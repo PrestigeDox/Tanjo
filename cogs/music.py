@@ -388,10 +388,10 @@ class Music:
                 return False
 
             if votes.add_vote(ctx.author.id):
-                await ctx.send(f"Your vote to skip **{entry.name}** was added!\n"
+                await ctx.send(f"Your vote to skip **{entry.title}** was added!\n"
                                f"*{votes.total_votes}/{req} votes received.*")
             else:
-                await ctx.send(f"You have already voted to skip **{entry.name}**.\n"
+                await ctx.send(f"You have already voted to jump **{entry.title}**.\n"
                                f"*{votes.total_votes}/{req} votes received.*")
                 return False
             if votes.is_passed(req):
@@ -432,7 +432,6 @@ class Music:
         cond = await self._jump(ctx, player, index)
         if cond:
             await self._wait_player(player)
-        print("current", current_index, "returnind", return_event.index)
         await self._wait_player(player)
         print('return event awoken')
         player.jump_event.set()
@@ -516,10 +515,10 @@ class Music:
                 await ctx.send(f"Your vote to skip **{entry.name}** was added!\n"
                                f"*{votes.total_votes}/{req} votes received.*")
             else:
-                return await ctx.send(f"You have already voted to skip **{entry.name}**.\n"
+                return await ctx.send(f"You have already voted to skip **{entry.title}**.\n"
                                       f"*{votes.total_votes}/{req} votes received.*")
             if votes.is_passed(req):
-                await ctx.send(f"Vote requirements were fulfilled, **{entry.name}** will be skipped.")
+                await ctx.send(f"Vote requirements were fulfilled, **{entry.title}** will be skipped.")
                 player.votes.skip.remove(votes)
                 pass
             else:
