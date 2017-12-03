@@ -403,6 +403,7 @@ class Music:
 
         if not player.voice_client.is_playing() and not player.state == MusicState.PAUSED:
             player.index = index
+            player.jump_event.set()
             self.bot.loop.create_task(player.play())
             await ctx.send(f"Jumping to **{index+1}**!")
             return True
@@ -418,20 +419,24 @@ class Music:
         player = self.bot.players.get(ctx.message.guild)
         await self._jump(ctx, player, index)
 
+    @staticmethod
+    async def _wait_player(player):
+        return_event = asyncio.Event()
+        player.jump_return = return_event
+        await return_event.wait()
+
     @jump.command(name='return')
     async def jump_return(self, ctx, *, index: int=None):
         player = self.bot.players.get(ctx.message.guild)
         current_index = player.index
         cond = await self._jump(ctx, player, index)
-        return_event = asyncio.Event()
-        player = self.bot.players.get(ctx.message.guild)
-        return_event.index = player.index if cond else player.jump_event.index
-        # Old track, resets
-        player.jump_return = return_event
-        await return_event.wait()
+        if cond:
+            await self._wait_player(player)
+        print("current", current_index, "returnind", return_event.index)
+        await self._wait_player(player)
         print('return event awoken')
         player.jump_event.set()
-        player.index = current_index
+        player.jump_event.index = current_index
 
     @commands.command()
     async def pause(self, ctx):
