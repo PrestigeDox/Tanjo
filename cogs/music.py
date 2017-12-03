@@ -380,7 +380,7 @@ class Music:
         else:
             votes = player.votes.jump
             if votes is None:
-                votes = Votes(index)
+                votes = player.votes.jump = Votes(index)
             elif votes.for_item == index:
                 pass
             else:

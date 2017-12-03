@@ -4,8 +4,7 @@ class Votes:
 
     def __init__(self, for_item=None):
         self.voters = []
-        if for_item:
-            self.for_item = for_item
+        self.for_item = for_item
 
     def add_vote(self, user):
         if user not in self.voters:
@@ -35,5 +34,5 @@ class ActionVotes:
 
     def __init__(self):
         self.skip = []
-        self.jump = Votes()
+        self.jump = None
         self.disconnect = Votes()
