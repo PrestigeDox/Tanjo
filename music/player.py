@@ -152,6 +152,7 @@ class Player:
                                                    stdout=subprocess.PIPE, stdin=stream_process.stdout
                                                    )
                     self.current_process = ff2_process
+                    await asyncio.sleep(1.5)
                     ytdl_player = discord.FFmpegPCMAudio(
                         ff2_process.stdout,
                         before_options=f"-nostdin{' -ss '+seek if seek is not None else ''}",
@@ -165,6 +166,7 @@ class Player:
                                                        "--no-check-certificate", "-f", "bestaudio/best", "-o", "-"],
                                                       stdout=subprocess.PIPE)
                     self.current_process = stream_process
+                    await asyncio.sleep(1.5)
                     ytdl_player = discord.FFmpegPCMAudio(
                         stream_process.stdout,
                         before_options=f"-nostdin{' -ss '+seek if seek is not None else ''}",
@@ -364,7 +366,7 @@ class Player:
 
                 try:
                     for entry in self.playlist.entries:
-                        if entry.url.split('/')[3] == \
+                        if entry.webpage_url.split('/')[3] == \
                                 altitems[song_choice].select('a[href^=/watch]')[0].attrs.get('href').split('/')[1]:
                             test = True
                             break
