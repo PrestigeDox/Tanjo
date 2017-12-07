@@ -7,12 +7,11 @@ class Help:
         self.bot = bot
         self.cmd = bot.get_command
         self.color = bot.user_color
-        self.pre = bot.command_prefix
 
     @commands.group(invoke_without_command=True)
     async def help(self, ctx, *, command_name: str=None):
         """ Shows the possible help categories """
-
+        bot_prefix = ctx.prefix
         # Shortcut to command search
         if command_name is not None:
             return await ctx.invoke(self.cmd('help command'), cmd_name=command_name)
@@ -20,9 +19,9 @@ class Help:
         em = discord.Embed(title='Help',
                            description='Below is a list of command categories.\n'
                                        f'To get help or more information on a specific category or command, use:\n'
-                                       f'`{self.pre}help cat|category <category name>` for a category OR\n'
-                                       f'`{self.pre}help cmd|command <command name>` for a specific command.\n'
-                                       f'`{self.pre}help <command name>` is also a shortcut for the above.',
+                                       f'`{bot_prefix}help cat|category <category name>` for a category OR\n'
+                                       f'`{bot_prefix}help cmd|command <command name>` for a specific command.\n'
+                                       f'`{bot_prefix}help <command name>` is also a shortcut for the above.',
                            color=self.color)
 
         # This can't go in the init because help isn't loaded last & thus misses some commands
@@ -37,6 +36,7 @@ class Help:
     @help.command(name='category', aliases=['categories', 'ctg'])
     async def help_categories(self, ctx, *, category_name: str=None):
         """ Get brief help for each command in a specific category """
+        bot_prefix = ctx.prefix
         # Handle no input
         if category_name is None:
             return await ctx.error('Category must be provided.')
@@ -50,7 +50,7 @@ class Help:
             return await ctx.error(f'`{category_name}` is not a category.')
 
         em = discord.Embed(title=category_name, color=self.color)
-        em.add_field(name='Commands', value='\n'.join([f'\u2022 `{self.pre}{x.name}` - {x.short_doc}'
+        em.add_field(name='Commands', value='\n'.join([f'\u2022 `{bot_prefix}{x.name}` - {x.short_doc}'
                                                        for x in self.bot.get_cog_commands(category_name)]))
 
         await ctx.send(embed=em)
@@ -58,7 +58,7 @@ class Help:
     @help.command(name='command', aliases=['cmd', 'commands'])
     async def help_command(self, ctx, *, cmd_name: str=None):
         """ Sends help for a specific command """
-
+        bot_prefix = ctx.prefix
         # Get command object
         cmd_obj = self.cmd(cmd_name)
 
@@ -82,7 +82,7 @@ class Help:
 
         # Add usage last
         em.add_field(name='Usage',
-                     value=f'```{self.pre}\u200b{cmd_name} '
+                     value=f'```{bot_prefix}\u200b{cmd_name} '
                            f'{" ".join([f"<{x}>" for x in cmd_obj.clean_params])}```',
                      inline=False)
 
