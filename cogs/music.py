@@ -23,38 +23,42 @@ class Music:
         self.reaction_emojis = ['⬅', '➡']
         self.color = bot.user_color
 
-    async def _queue(self, ctx, song_name, effect, searchmode=0):
+    async def _queue(self, ctx, song_name, effect, searchmode=0, silent=False):
         """ Exists separately solely to be able to use subcommands """
         message = ctx.message
         bot = self.bot
 
         # Handle funky embed connecting
         if message.guild not in bot.vc_clients:
-            np_embed = discord.Embed(title='Connecting...', colour=self.color)
-            np_embed.set_thumbnail(url='https://imgur.com/3QIBGl3.png')
-            trying_msg = await ctx.send(embed=np_embed)
+            if not silent:
+                np_embed = discord.Embed(title='Connecting...', colour=self.color)
+                np_embed.set_thumbnail(url='https://imgur.com/3QIBGl3.png')
+                trying_msg = await ctx.send(embed=np_embed)
 
             # Error if you're trying to listen music out of thin air/not in a voice channel
             if message.author.voice is None:
-                np_embed = discord.Embed(title='Error', description='You are not in a voice channel', colour=self.color)
-                np_embed.set_thumbnail(url='https://imgur.com/B9YlwWt.png')
-                await trying_msg.edit(embed=np_embed)
+                if not silent:
+                    np_embed = discord.Embed(title='Error', description='You are not in a voice channel', colour=self.color)
+                    np_embed.set_thumbnail(url='https://imgur.com/B9YlwWt.png')
+                    await trying_msg.edit(embed=np_embed)
                 return
 
             # This timeout never triggers, not sure
             try:
                 vc = await message.author.voice.channel.connect(timeout=6.0)
             except asyncio.TimeoutError:
-                np_embed = discord.Embed(title='Error', description="Wasn't able to connect, please try again!",
-                                         colour=self.color)
-                np_embed.set_thumbnail(url='https://imgur.com/KQp2PUQ.png')
-                await trying_msg.edit(embed=np_embed)
+                if not silent:
+                    np_embed = discord.Embed(title='Error', description="Wasn't able to connect, please try again!",
+                                             colour=self.color)
+                    np_embed.set_thumbnail(url='https://imgur.com/KQp2PUQ.png')
+                    await trying_msg.edit(embed=np_embed)
                 return
             bot.vc_clients[message.guild] = vc
-            np_embed = discord.Embed(title='Bound to ' + message.author.voice.channel.name,
-                                     description='summoned by **%s**' % message.author.mention, colour=self.color)
-            np_embed.set_thumbnail(url='https://imgur.com/kVlJSXg.png')
-            await trying_msg.edit(embed=np_embed)
+            if not silent:
+                np_embed = discord.Embed(title='Bound to ' + message.author.voice.channel.name,
+                                         description='summoned by **%s**' % message.author.mention, colour=self.color)
+                np_embed.set_thumbnail(url='https://imgur.com/kVlJSXg.png')
+                await trying_msg.edit(embed=np_embed)
 
         # Smart way to go through the message and find out what's a flag and where our song name starts from
         # for n, item in enumerate(message.content.split()[1:], 1):
@@ -90,8 +94,9 @@ class Music:
                 entry, position = mplayer.playlist.add(url, info['webpage_url'], message.author, message.channel,
                                                        info['title'], info['duration'], effect, info['thumbnail'],
                                                        info['is_live'])
-                await ctx.send("**%s** was added to the queue at position %s, %s" % (
-                    entry.title, position, mplayer.playlist.estimate_time(position, mplayer)))
+                if not silent:
+                    await ctx.send("**%s** was added to the queue at position %s, %s" % (
+                        entry.title, position, mplayer.playlist.estimate_time(position, mplayer)))
 
             # If it's a playlist
             elif 'list' in song_name:
@@ -138,8 +143,9 @@ class Music:
                     entry, position = mplayer.playlist.add(url, info['webpage_url'], message.author, message.channel,
                                                            info['title'], info['duration'], effect, info['thumbnail'],
                                                            info['is_live'], song_name)
-                await ctx.send("**%s** was added to the queue at position %s, %s" % (
-                    entry.title, position, mplayer.playlist.estimate_time(position, mplayer)))
+                if not silent:
+                    await ctx.send("**%s** was added to the queue at position %s, %s" % (
+                        entry.title, position, mplayer.playlist.estimate_time(position, mplayer)))
 
             # Prepare the entry, music player, its time
             bot.loop.create_task(mplayer.play())
@@ -655,7 +661,6 @@ class Music:
 
             await conn.execute('UPDATE users SET playlist=$1 WHERE id=$2', json.dumps(user_pl), author_id)
 
-
     @staticmethod
     def _numparse(nums):
         def parse_range(num):
@@ -706,10 +711,6 @@ class Music:
 
     @playlist.command(name="play")
     async def pl_play(self, ctx, *, index: str=None):
-        player = self.bot.players.get(ctx.guild)
-        if player is None:
-            return await ctx.error("There is no active player to add tracks from.")
-
         if index is None:
             return await ctx.error("The argument passed should be an index and/or ranges separated by commas "
                                    "from the current queue\nExample:\n"f"{ctx.prefix}add 1,2,7-9")
@@ -724,8 +725,16 @@ class Music:
             return await ctx.error("That's an empty playlist, add tracks to your playlist, then try this again.")
 
         for entry_inx in indexes:
-            entry = pl[entry_inx-1]
-            await self._queue(ctx, entry['url'], 'None')
+            try:
+                entry = pl[entry_inx-1]
+                await self._queue(ctx, entry['url'], 'None', silent=True)
+            except:
+                indexes.remove(entry_inx)
+
+        em = discord.Embed(title="Personal Playlist", color=discord.Color.dark_orange())
+        em.add_field(name="Successfully queued", value='\n'.join([f"{ind}. {pl[ind-1]['title']}"
+                                                                 for ind in indexes]))
+        await ctx.send(embed=em)
 
 
 def setup(bot):
