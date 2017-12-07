@@ -2,14 +2,17 @@
 
 import asyncio
 import discord
+import json
 
 from collections import defaultdict
 from datetime import timedelta
 from discord.ext import commands
+from itertools import chain
 from music.musicstate import MusicState
 from music.player import Player
 from music.ytsearch import ytsearch
 from utils.votes import Votes
+from utils import db as tanjo
 
 
 class Music:
@@ -206,6 +209,9 @@ class Music:
             index -= 1
 
         player = self.bot.players[ctx.message.guild]
+        if not player.playlist.entries:
+            return await ctx.error('Empty queue! Queue something with `play`')
+
         printlines = defaultdict(list)
         printlines[0].append('```py')
         current_page = 0
@@ -230,8 +236,6 @@ class Music:
 
             printlines[current_page].append(nextline)
         printlines[current_page].append('```')
-        if not printlines[0]:
-            return await ctx.error('Empty queue! Queue something with `play`')
 
         if len(printlines.keys()) == 1:
             print(printlines)
@@ -261,10 +265,10 @@ class Music:
 
             if str(reaction.emoji) == self.reaction_emojis[0]:
                 index = max(0, index-1)
-                await q_msg.edit(content=''.join(printlines[index]))
+                await q_msg.edit(content='\n'.join(printlines[index]))
             elif str(reaction.emoji) == self.reaction_emojis[1]:
                 index = min(len(printlines.keys())-1, index+1)
-                await q_msg.edit(content=''.join(printlines[index]))
+                await q_msg.edit(content='\n'.join(printlines[index]))
 
     @commands.command(aliases=['leave', 'destroy', 'dc'])
     async def disconnect(self, ctx):
@@ -406,12 +410,10 @@ class Music:
             player.jump_event.set()
             self.bot.loop.create_task(player.play())
             await ctx.send(f"Jumping to **{index+1}**!")
-            return True
         else:
             player.jump_event.set()
             player.jump_event.index = index
             await ctx.send(f"Will jump to **{index+1}** after the current track finishes playing!")
-            return False
 
     @commands.group(invoke_without_command=True, aliases=['pick'])
     async def jump(self, ctx, *, index: int=None):
@@ -423,17 +425,19 @@ class Music:
     async def _wait_player(player):
         return_event = asyncio.Event()
         player.jump_return = return_event
+        player.jump_event.set()
         await return_event.wait()
 
     @jump.command(name='return')
     async def jump_return(self, ctx, *, index: int=None):
         player = self.bot.players.get(ctx.message.guild)
+        if not player.voice_client.is_playing() and not player.state == MusicState.PAUSED:
+            return await ctx.error("Cant use `return` on a finished queue, use `jump` instead.")
         current_index = player.index
-        cond = await self._jump(ctx, player, index)
-        if cond:
-            await self._wait_player(player)
+        await self._jump(ctx, player, index)
         await self._wait_player(player)
         print('return event awoken')
+
         player.jump_event.set()
         player.jump_event.index = current_index
 
@@ -562,6 +566,105 @@ class Music:
                 await ctx.send(f":arrows_counterclockwise: **{player.current_entry.title}**, has been set to repeat,"
                                "till the end of time itself!\nUse this command again to interrupt the repetition."
                                )
+
+    @commands.group()
+    async def playlist(self, ctx):
+        pass
+
+    async def _update(self, author_id, entries: list):
+        async with self.bot.conn_pool.acquire() as conn:
+            user = await tanjo.fetch_user(conn, author_id)
+            if user['playlist'] is not None:
+                user_pl = json.loads(user['playlist'])
+            else:
+                user_pl = []
+
+            for entry in entries:
+                user_pl.append({"title": entry.title, "url": entry.url})
+
+            await conn.execute('UPDATE users SET playlist=$1 WHERE id=$2', json.dumps(user_pl), author_id)
+
+    async def _get_pl(self, author_id):
+        async with self.bot.conn_pool.acquire() as conn:
+            user = await tanjo.fetch_user(conn, author_id)
+            if user['playlist'] is not None:
+                user_pl = json.loads(user['playlist'])
+            else:
+                user_pl = []
+            return user_pl
+
+    @staticmethod
+    def _numparse(nums):
+        def parse_range(num):
+            # Split into start and end if its a range
+            # '7' = ['7'] but '7-9' = ['7','9'].
+            parts = num.split('-')
+            parts = [int(i) for i in parts]
+            start = parts[0]
+
+            # If its not a range, it starts and ends on itself, so its parsed as a single number in the chain.
+            end = start if len(parts) == 1 else parts[1]
+
+            # re-assign to support reverse ranges cause why not.
+            if start > end:
+                end, start = start, end
+
+            # return as a range to feed to chain.
+            return range(start, end + 1)
+
+        # Chain iters over the range()s parse_range returns, set excludes repeated nums and sorted is QoL.
+        return sorted(set(chain(*[parse_range(num) for num in nums.split(',')])))
+
+    @playlist.command()
+    async def add(self, ctx, *, index: str=None):
+        """Add a song to your personal playlist"""
+        player = self.bot.players.get(ctx.guild)
+        if player is None:
+            return await ctx.error("There is no active player to add tracks from.")
+
+        if index is None:
+            return await ctx.error("The argument passed should be an index and/or ranges separated by commas "
+                                   "from the current queue\nExample:\n"f"{ctx.prefix}add 1,2,7-9")
+        try:
+            indexes = self._numparse(index)
+        except ValueError:
+            return await ctx.error("An invalid range was supplied")
+        for entry_inx in indexes:
+            try:
+                entry = player.playlist.entries[entry_inx-1]
+                await self._update(ctx.author.id, [entry])
+            except IndexError:
+                indexes.remove(entry_inx)
+
+        em = discord.Embed(title="Personal Playlist", color=discord.Color.dark_orange())
+        em.add_field(name="Successfully added", value='\n'.join([f"{ind}. {player.playlist.entries[ind-1].title}"
+                                                                 for ind in indexes]))
+        await ctx.send(embed=em)
+
+    @playlist.command()
+    async def play(self, ctx, *, index: str=None):
+        player = self.bot.players.get(ctx.guild)
+        if player is None:
+            return await ctx.error("There is no active player to add tracks from.")
+
+        if index is None:
+            return await ctx.error("The argument passed should be an index and/or ranges separated by commas "
+                                   "from the current queue\nExample:\n"f"{ctx.prefix}add 1,2,7-9")
+        try:
+            indexes = self._numparse(index)
+        except ValueError:
+            return await ctx.error("An invalid range was supplied")
+
+        pl = await self._get_pl(ctx.author.id)
+        if not pl:
+            return await ctx.error("That's an empty playlist, add tracks to your playlist, then try this again.")
+
+        for entry_inx in indexes:
+            try:
+                entry = pl[entry_inx-1]
+                await self._queue(ctx, entry['url'], 'None')
+            except IndexError:
+                indexes.remove(entry_inx)
 
 
 def setup(bot):

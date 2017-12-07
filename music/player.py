@@ -142,8 +142,7 @@ class Player:
                                                           )
                     # Normal karaoke, no live
                     else:
-                        stream_process = subprocess.Popen(["youtube-dl", now.url, "--quiet", "--no-warnings",
-                                                          "--no-check-certificate", "-f", "bestaudio/best", "-o", "-"],
+                        stream_process = subprocess.Popen(["wget", "-qO-", now.url],
                                                           stdout=subprocess.PIPE
                                                           )
 
@@ -162,8 +161,7 @@ class Player:
                 # Normal track no live
                 elif not now.is_live:
                     # Have youtube-dl handle downloading rather than ffmpeg , again cause ffmpeg is just bad at it
-                    stream_process = subprocess.Popen(["youtube-dl", now.url, "--quiet", "--no-warnings",
-                                                       "--no-check-certificate", "-f", "bestaudio/best", "-o", "-"],
+                    stream_process = subprocess.Popen(["wget", "-qO-", now.url],
                                                       stdout=subprocess.PIPE)
                     self.current_process = stream_process
                     await asyncio.sleep(1.5)
