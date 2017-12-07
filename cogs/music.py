@@ -580,7 +580,10 @@ class Music:
                 user_pl = []
 
             for entry in entries:
-                user_pl.append({"title": entry.title, "url": entry.url})
+                user_pl.append({"title": entry.title, "url": entry.webpage_url})
+
+            # Eliminate duplicate entries
+            user_pl = [dict(t) for t in set([tuple(d.items()) for d in user_pl])]
 
             await conn.execute('UPDATE users SET playlist=$1 WHERE id=$2', json.dumps(user_pl), author_id)
 
