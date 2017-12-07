@@ -715,6 +715,7 @@ class Music:
                                    "from the current queue\nExample:\n"f"{ctx.prefix}add 1,2,7-9")
         try:
             indexes = self._numparse(index)
+            print(indexes)
         except ValueError:
             return await ctx.error("An invalid range was supplied")
 
@@ -723,11 +724,8 @@ class Music:
             return await ctx.error("That's an empty playlist, add tracks to your playlist, then try this again.")
 
         for entry_inx in indexes:
-            try:
-                entry = pl[entry_inx-1]
-                await self._queue(ctx, entry['url'], 'None')
-            except IndexError:
-                indexes.remove(entry_inx)
+            entry = pl[entry_inx-1]
+            await self._queue(ctx, entry['url'], 'None')
 
 
 def setup(bot):
