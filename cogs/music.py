@@ -568,9 +568,72 @@ class Music:
                                "till the end of time itself!\nUse this command again to interrupt the repetition."
                                )
 
+    async def _get_pl(self, author_id):
+        async with self.bot.conn_pool.acquire() as conn:
+            user = await tanjo.fetch_user(conn, author_id)
+            if user['playlist'] is not None:
+                user_pl = json.loads(user['playlist'])
+            else:
+                user_pl = []
+            return user_pl
+
     @commands.group()
-    async def playlist(self, ctx):
-        pass
+    async def playlist(self, ctx, index: int=None):
+        if index:
+            index -= 1
+
+        pl = await self._get_pl(ctx.author.id)
+        if not pl:
+            return await ctx.error("That's an empty playlist, add tracks to your playlist, then try this again.")
+
+        printlines = defaultdict(list)
+        printlines[0].append('```py')
+        current_page = 0
+        for i, item in enumerate(pl, 1):
+            nextline = f'{i}. {item["title"]}\n'
+
+            currentpagesum = sum(len(x) + 1 for x in printlines[current_page])
+
+            if currentpagesum + len(nextline) + 20 > 2000:
+                printlines[current_page].append('```')
+                current_page += 1
+                printlines[current_page].append('```py')
+
+            printlines[current_page].append(nextline)
+        printlines[current_page].append('```')
+
+        if len(printlines.keys()) == 1:
+            print(printlines)
+            await ctx.send('\n'.join(printlines[0]))
+            return
+
+        if index not in printlines.keys():
+            return await ctx.error(f"The current queue only has pages 1-{len(printlines.keys())}")
+
+        printlines[index].insert(len(printlines[index]) - 1, f'\nPage: {index+1}/{len(printlines.keys())}')
+        q_msg = await ctx.send('\n'.join(printlines[index]))
+        for emoji in self.reaction_emojis:
+            await q_msg.add_reaction(emoji)
+
+        while 1:
+            def check(reaction, user):
+                return reaction.message.id == q_msg.id and user == ctx.author and \
+                       str(reaction.emoji) in self.reaction_emojis
+            try:
+                reaction, user = await self.bot.wait_for('reaction_add', timeout=30.0, check=check)
+            except asyncio.TimeoutError:
+                await q_msg.delete()
+                return
+
+            for emoji in self.reaction_emojis:
+                await q_msg.remove_reaction(emoji, ctx.author)
+
+            if str(reaction.emoji) == self.reaction_emojis[0]:
+                index = max(0, index-1)
+                await q_msg.edit(content='\n'.join(printlines[index]))
+            elif str(reaction.emoji) == self.reaction_emojis[1]:
+                index = min(len(printlines.keys())-1, index+1)
+                await q_msg.edit(content='\n'.join(printlines[index]))
 
     async def _update(self, author_id, entries: list):
         async with self.bot.conn_pool.acquire() as conn:
@@ -592,14 +655,6 @@ class Music:
 
             await conn.execute('UPDATE users SET playlist=$1 WHERE id=$2', json.dumps(user_pl), author_id)
 
-    async def _get_pl(self, author_id):
-        async with self.bot.conn_pool.acquire() as conn:
-            user = await tanjo.fetch_user(conn, author_id)
-            if user['playlist'] is not None:
-                user_pl = json.loads(user['playlist'])
-            else:
-                user_pl = []
-            return user_pl
 
     @staticmethod
     def _numparse(nums):
