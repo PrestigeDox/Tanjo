@@ -79,7 +79,7 @@ class Music:
 
             # If it's a link
             if 'watch?' in song_name:
-                info = await bot.downloader.extract_info(bot.loop, song_name, download=False, process=False,
+                info = await bot.downloader.extract_info(bot.loop, song_name, download=False, process=True,
                                                          retry_on_error=True)
                 if info['is_live']:
                     url = info['webpage_url']
