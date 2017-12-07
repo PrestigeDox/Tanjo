@@ -5,6 +5,7 @@ import discord
 import json
 
 from collections import defaultdict
+from collections import OrderedDict
 from datetime import timedelta
 from discord.ext import commands
 from itertools import chain
@@ -575,15 +576,18 @@ class Music:
         async with self.bot.conn_pool.acquire() as conn:
             user = await tanjo.fetch_user(conn, author_id)
             if user['playlist'] is not None:
-                user_pl = json.loads(user['playlist'])
+                user_pl = json.loads(user['playlist'], object_pairs_hook=OrderedDict)
             else:
                 user_pl = []
 
             for entry in entries:
                 user_pl.append({"title": entry.title, "url": entry.webpage_url})
+            print(user_pl)
 
             # Eliminate duplicate entries
             user_pl = [dict(t) for t in set([tuple(d.items()) for d in user_pl])]
+
+            print(user_pl)
 
             await conn.execute('UPDATE users SET playlist=$1 WHERE id=$2', json.dumps(user_pl), author_id)
 
