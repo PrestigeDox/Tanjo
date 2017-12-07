@@ -577,7 +577,7 @@ class Music:
                 user_pl = []
             return user_pl
 
-    @commands.group()
+    @commands.group(invoke_without_command=True)
     async def playlist(self, ctx, index: int=None):
         if index:
             index -= 1
@@ -590,7 +590,7 @@ class Music:
         printlines[0].append('```py')
         current_page = 0
         for i, item in enumerate(pl, 1):
-            nextline = f'{i}. {item["title"]}\n'
+            nextline = f'{i}. {item["title"]}'
 
             currentpagesum = sum(len(x) + 1 for x in printlines[current_page])
 
