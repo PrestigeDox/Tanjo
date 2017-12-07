@@ -581,11 +581,12 @@ class Music:
                 user_pl = []
 
             for entry in entries:
-                user_pl.append({"title": entry.title, "url": entry.webpage_url})
+                if all([False if x['url'] == entry.webpage_url else True for x in user_pl]):
+                    user_pl.append({"title": entry.title, "url": entry.webpage_url})
             print(user_pl)
 
             # Eliminate duplicate entries
-            user_pl = [dict(t) for t in set([tuple(d.items()) for d in user_pl])]
+            # user_pl = [dict(t) for t in set([tuple(d.items()) for d in user_pl])]
 
             print(user_pl)
 
