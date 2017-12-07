@@ -641,8 +641,8 @@ class Music:
                                                                  for ind in indexes]))
         await ctx.send(embed=em)
 
-    @playlist.command()
-    async def play(self, ctx, *, index: str=None):
+    @playlist.command(name="play")
+    async def pl_play(self, ctx, *, index: str=None):
         player = self.bot.players.get(ctx.guild)
         if player is None:
             return await ctx.error("There is no active player to add tracks from.")
