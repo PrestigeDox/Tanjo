@@ -583,7 +583,7 @@ class Music:
                 user_pl = []
             return user_pl
 
-    @commands.group(invoke_without_command=True)
+    @commands.group(invoke_without_command=True, aliases=['pl'])
     async def playlist(self, ctx, index: int=None):
         if index:
             index -= 1
@@ -685,7 +685,7 @@ class Music:
         # Chain iters over the range()s parse_range returns, set excludes repeated nums and sorted is QoL.
         return sorted(set(chain(*[parse_range(num) for num in nums.split(',')])))
 
-    @playlist.command()
+    @playlist.command(aliases=['save'])
     async def add(self, ctx, *, index: str=None):
         """Add a song to your personal playlist"""
         player = self.bot.players.get(ctx.guild)
@@ -738,7 +738,7 @@ class Music:
                                                                  for ind in indexes]))
         await ctx.send(embed=em)
 
-    @playlist.command()
+    @playlist.command(aliases=['remove', 'rm'])
     async def delete(self, ctx, *, index: str=None):
         if index is None:
             return await ctx.error("The argument passed should be an index and/or ranges separated by commas "
@@ -767,6 +767,32 @@ class Music:
 
         em = discord.Embed(title="Personal Playlist", color=discord.Color.dark_orange())
         em.add_field(name="Successfully deleted", value='\n'.join([f"{item['title']}" for item in old_pl]))
+        await ctx.send(embed=em)
+
+    @playlist.command(aliases=['song', 'track'])
+    async def entry(self, ctx, *, index: int=None):
+        if index is None:
+            return await ctx.error("Please give me a number from your playlist to get info about!")
+        pl = await self._get_pl(ctx.author.id)
+        if not pl:
+            return await ctx.error("That's an empty playlist, add tracks to your playlist, then try this again.")
+
+        try:
+            entry = pl[index-1]
+        except IndexError:
+            return await ctx.error(f"An entry does not exist at position `{index}`.")
+
+        try:
+            info = await self.bot.downloader.extract_info(self.bot.loop, entry['url'], download=False, process=True,
+                                                          retry_on_error=True)
+        except:
+            return await ctx.error("This entry is no longer available on YouTube.")
+
+        em = discord.Embed(title=info['title'], url=info['webpage_url'],
+                           description=info['webpage_url'], color=discord.Color.dark_orange())
+        em.add_field(name="Duration", value=str(timedelta(seconds=info['duration'])).lstrip('0').lstrip(':'))
+        em.set_thumbnail(url=info['thumbnail'])
+
         await ctx.send(embed=em)
 
 
