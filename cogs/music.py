@@ -641,7 +641,7 @@ class Music:
                 index = min(len(printlines.keys())-1, index+1)
                 await q_msg.edit(content='\n'.join(printlines[index]))
 
-    async def _update(self, author_id, entries: list):
+    async def _update(self, author_id, entry=None, entries: list=None):
         async with self.bot.conn_pool.acquire() as conn:
             user = await tanjo.fetch_user(conn, author_id)
             if user['playlist'] is not None:
@@ -649,9 +649,11 @@ class Music:
             else:
                 user_pl = []
 
-            for entry in entries:
+            if entry is not None:
                 if all([False if x['url'] == entry.webpage_url else True for x in user_pl]):
                     user_pl.append({"title": entry.title, "url": entry.webpage_url})
+            elif entries is not None:
+                user_pl = entries
             print(user_pl)
 
             # Eliminate duplicate entries
@@ -700,7 +702,7 @@ class Music:
         for entry_inx in indexes:
             try:
                 entry = player.playlist.entries[entry_inx-1]
-                await self._update(ctx.author.id, [entry])
+                await self._update(ctx.author.id, entry=entry)
             except IndexError:
                 indexes.remove(entry_inx)
 
@@ -734,6 +736,37 @@ class Music:
         em = discord.Embed(title="Personal Playlist", color=discord.Color.dark_orange())
         em.add_field(name="Successfully queued", value='\n'.join([f"{ind}. {pl[ind-1]['title']}"
                                                                  for ind in indexes]))
+        await ctx.send(embed=em)
+
+    @playlist.command()
+    async def delete(self, ctx, *, index: str=None):
+        if index is None:
+            return await ctx.error("The argument passed should be an index and/or ranges separated by commas "
+                                   "from the current queue\nExample:\n"f"{ctx.prefix}add 1,2,7-9")
+        try:
+            indexes = self._numparse(index)
+            print(indexes)
+        except ValueError:
+            return await ctx.error("An invalid range was supplied")
+
+        pl = await self._get_pl(ctx.author.id)
+
+        # A copy of pl so we can reference deleted tracks
+        old_pl = []
+        if not pl:
+            return await ctx.error("That's an empty playlist, add tracks to your playlist, then try this again.")
+
+        for entry_inx in indexes:
+            try:
+                assert pl[entry_inx-1]
+                old_pl.append(pl.pop(entry_inx-1))
+            except:
+                pass
+
+        await self._update(ctx.author.id, entries=pl)
+
+        em = discord.Embed(title="Personal Playlist", color=discord.Color.dark_orange())
+        em.add_field(name="Successfully deleted", value='\n'.join([f"{item['title']}" for item in old_pl]))
         await ctx.send(embed=em)
 
 
