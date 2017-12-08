@@ -275,11 +275,14 @@ class Player:
                 self.seek_event.clear()
 
             if self.current_process is not None:
-                # RIP
-                self.current_process.kill()
-                if self.current_process.poll() is None:
-                    # Murder
-                    self.current_process.communicate()
+                try:
+                    # RIP
+                    self.current_process.kill()
+                    if self.current_process.poll() is None:
+                        # Murder
+                        self.current_process.communicate()
+                except ValueError:
+                    pass
 
                 self.current_process = None
             return
