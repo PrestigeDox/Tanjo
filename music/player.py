@@ -21,12 +21,6 @@ class Player:
     def __init__(self, bot, voice_client):
         self.bot = bot
         self.voice_client = voice_client
-
-        if os.name == 'nt':
-            self.slash = '\\'
-        else:
-            self.slash = '/'
-
         self.playlist = Playlist(bot)
         self.current_player = None
         self.current_entry = None
@@ -123,7 +117,6 @@ class Player:
 
                 if now.effect == 'None':
                     addon = ""
-                    i_addon = ""
 
                 # If karaoke mode
                 if now.effect == 'k':
@@ -164,11 +157,11 @@ class Player:
                     stream_process = subprocess.Popen(["wget", "-qO-", now.url],
                                                       stdout=subprocess.PIPE)
                     self.current_process = stream_process
-                    await asyncio.sleep(1.5)
+                    #await asyncio.sleep(1.5)
                     ytdl_player = discord.FFmpegPCMAudio(
                         stream_process.stdout,
                         before_options=f"-nostdin{' -ss '+seek if seek is not None else ''}",
-                        options="-acodec pcm_s16le -vn -b:a 128k" + addon + volumestr + self.EQEffects[self.EQ],
+                        options="-acodec pcm_s16le -vn -b:a 128k" + volumestr + self.EQEffects[self.EQ],
                         pipe=True)
 
                 # Livestream
@@ -264,6 +257,9 @@ class Player:
     # was my solution to not being able to pass an awaitable to 'after'
     # in 'play', also returns when volume was changed of seeking was done.
     def next(self, error):
+        if self.current_process is not None:
+            self.current_process.kill()
+            self.current_process = None
         print('in normal next')
         if self.state == MusicState.DEAD or self.volume_event.is_set() or self.seek_event.is_set():
             print('normal next returned')
@@ -284,7 +280,6 @@ class Player:
                 except ValueError:
                     pass
 
-                self.current_process = None
             return
         self.bot.loop.create_task(self.real_next())
 
