@@ -35,6 +35,7 @@ class Player:
         self.current_time = None
         self.index = 0
         self.repeat = 0
+        self.change = False
 
         self.jump_event = asyncio.Event()
         self.jump_return = None
@@ -274,7 +275,7 @@ class Player:
                 self.current_process.communicate()
             self.current_process = None
         print('in normal next')
-        if self.state == MusicState.DEAD or not self.volume_event.is_set() or not self.seek_event.is_set():
+        if self.state == MusicState.DEAD or self.change:
             print('normal next returned')
 
             if not self.volume_event.is_set():
@@ -283,17 +284,7 @@ class Player:
             if not self.seek_event.is_set():
                 self.seek_event.set()
 
-            if self.current_process is not None:
-                try:
-                    # RIP
-                    print('trying to kill')
-                    self.current_process.kill()
-                    if self.current_process.poll() is None:
-                        # Murder
-                        self.current_process.communicate()
-                except ValueError:
-                    pass
-
+            self.change = False
             return
         self.bot.loop.create_task(self.real_next())
 

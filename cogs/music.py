@@ -484,6 +484,7 @@ class Music:
             return await ctx.error(f"Value can only be between 00:00:00 and {str(timedelta(seconds=duration))}")
 
         player.seek_event.set()
+        player.change = True
         player.reset(seektime, seek_seconds)
         await ctx.send(f"Seeking to {seektime}")
     
@@ -553,6 +554,7 @@ class Music:
             await ctx.send(embed=em)
             if player.voice_client.is_playing():
                 player.volume_event.set()
+                player.change = True
                 await player.reset()
         else:
             return await ctx.error("Volume value can only range from 0.0-2.0")
