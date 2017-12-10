@@ -85,9 +85,11 @@ class Player:
         if prog is None:
                 prog = self.accu_progress
 
-        if self.volume_event.is_set():
+        if not self.volume_event.is_set():
+            print('waiting for vol')
             await self.volume_event.wait()
-        if self.seek_event.is_set():
+        if not self.seek_event.is_set():
+            print('waiting for seek')
             await self.seek_event.wait()
 
         if seektime is None:
@@ -102,6 +104,7 @@ class Player:
         'next' is provided as the functon to be called when
         the source is done playing
         """
+        print('inside play')
         if self.state == MusicState.DEAD or self.voice_client.is_playing():
             return
         if self.timeout_handle is not None:
@@ -194,9 +197,14 @@ class Player:
                         self.start_time = time.time()
                     else:
                         self.start_time = time.time() - seeksec
+                else:
+                    self.volume_event.clear()
+                self.seek_event.clear()
 
                 if seek is None and not self.volume_event.is_set():
                     self.bot.loop.create_task(self.manage_nowplaying())
+                else:
+                    self.volume_event.clear()
 
     # Both 'pause' and 'resume' will set current_time so that using the
     # NowPlaying command doesn't change time when the song isn't even playing
@@ -259,20 +267,26 @@ class Player:
     def next(self, error):
         if self.current_process is not None:
             self.current_process.kill()
+            print('kill issued')
+            if self.current_process.poll() is None:
+                # Murder
+                print('murder')
+                self.current_process.communicate()
             self.current_process = None
         print('in normal next')
-        if self.state == MusicState.DEAD or self.volume_event.is_set() or self.seek_event.is_set():
+        if self.state == MusicState.DEAD or not self.volume_event.is_set() or not self.seek_event.is_set():
             print('normal next returned')
 
-            if self.volume_event.is_set():
-                self.volume_event.clear()
+            if not self.volume_event.is_set():
+                self.volume_event.set()
 
-            if self.seek_event.is_set():
-                self.seek_event.clear()
+            if not self.seek_event.is_set():
+                self.seek_event.set()
 
             if self.current_process is not None:
                 try:
                     # RIP
+                    print('trying to kill')
                     self.current_process.kill()
                     if self.current_process.poll() is None:
                         # Murder
