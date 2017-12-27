@@ -4,7 +4,7 @@
 - **Mod:**
 	- ~~Ban~~
 	- ~~Kick~~
-	- Mute
+	- ~~Mute~~
 	- Warn
 	- ~~Purge~~	
 	- ~~Clean (softban to purge all messages)~~
@@ -18,7 +18,7 @@
 	- ~~guess~~ (game)
 	- ~~seven~~ (game)
 	- ~~settle~~ (game)
-	- Dice
+	- ~~Dice~~
 	- Currency System (same balance across all servers)
 	- Slots
 	- Black Jack (21)
@@ -36,25 +36,26 @@
 	- Whois
 	- Bot Info
 	- Define
-		- And UrbanDictionary
+		- ~~And UrbanDictionary~~
 	- Wikipedia
 	- ~~avatar~~ (image and full size download link)
 	- Starboard
 	- Tags
 	- Custom Commands
-	- Help
+	- ~~Help~~
 	- IP to location
 	- Info
-	- Shorten url
+	- ~~Shorten url~~
 	- Url tester (scrap basic info about any url)
 	- Highlighter
 	- Charinfo
+	- ~~Calculate~~
 - **Miscelaneous:**
 	- ~~zalgo~~ (text distortion)
 	- ~~esrever~~ (write backwards)
 	- ~~yt~~ (first video result)
+	- ~~textmojify~~
 	- ~~share~~ (message as the bot in any channel)
-	- ~~tinyurl~~ (because)
 	- ~~ud~~ (pocket urban dictionary, gets only first result)
 	- ~~feedback~~ (to contact devs channel)
 - **Internet:**
@@ -62,8 +63,9 @@
 	- Weather
 	- ~~Music~~ (seems to work for the most part)
 	- ~~Google~~
-	- Cat
-	- Dog
+	- ~~Cat~~
+	- ~~Dog~~
+	- ~~Hacker~~
 	- ~~NSFW~~ (6 different commands)
 	- Dict group (dictionary.net, oxford english dictionaries, merrian webster, thesaurus, wiktionary, wordnet)
 	- ~~calculator~~ (python calculator, no more google)
